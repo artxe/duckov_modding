@@ -161,7 +161,7 @@ namespace Enhanced_ADS
 				ModBehaviour.aim.y += sign_mouse * mag_mouse + sign_from * mag_from - sign_to * mag_to;
 				float defaultAimOffset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance) * 3;
 				float maxAimOffset = gun
-					? defaultAimOffset * gun.ADSAimDistanceFactor
+					? Mathf.Max(defaultAimOffset * gun.ADSAimDistanceFactor, gun.BulletDistance)
 					: defaultAimOffset * 1.25f;
 				ModBehaviour.aim = Vector2.ClampMagnitude(
 					ModBehaviour.aim,
