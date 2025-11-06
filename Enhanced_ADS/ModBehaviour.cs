@@ -58,20 +58,21 @@ namespace Enhanced_ADS
 			Vector2 center = new Vector2(Screen.width * .5f, Screen.height * .5f);
 			if (__instance.characterMainControl && __instance.characterMainControl.IsInAdsInput)
 			{
-				Vector2 screen_pos = (Vector2)I_aimScreenPoint.GetValue(__instance);
+				float ads_value = __instance.characterMainControl.AdsValue;
+				Vector2 screen_pos = (Vector2)I_aimScreenPoint.GetValue(__instance) + mouseDelta;
 				bool aimingEnemyHead = false;
 				ItemAgent_Gun gun = __instance.characterMainControl.GetGun();
 				if (gun)
 				{
 					screen_pos = (Vector2)I_ProcessMousePosViaRecoil.Invoke(__instance, new object[] { screen_pos, mouseDelta, gun });
 				}
+				Vector2 next_screen_pos = screen_pos - (screen_pos - center) * ads_value;
 				if (screen_pos != center)
 				{
-					mouseDelta += screen_pos - center;
-					Set_AimMousePosition.Invoke(__instance, new object[] { center });
-					I_aimScreenPoint.SetValue(__instance, center);
+					Set_AimMousePosition.Invoke(__instance, new object[] { next_screen_pos });
+					I_aimScreenPoint.SetValue(__instance, next_screen_pos);
 				}
-				Ray ray = LevelManager.Instance.GameCamera.renderCamera.ScreenPointToRay(center);
+				Ray ray = LevelManager.Instance.GameCamera.renderCamera.ScreenPointToRay(next_screen_pos);
 				Plane plane = new Plane(Vector3.up, Vector3.up * (__instance.characterMainControl.transform.position.y + 0.5f));
 				plane.Raycast(ray, out var enter);
 				Vector3 vector = ray.origin + ray.direction * enter;
@@ -129,21 +130,28 @@ namespace Enhanced_ADS
 				I_inputAimPoint.SetValue(__instance, vector);
         		__instance.characterMainControl.SetAimPoint(aimPoint);
 				GameCamera game_camera = GameCamera.Instance;
+				Vector2 delta_from = screen_pos - center;
+				Vector2 delta_to = next_screen_pos - center;
 				float f = game_camera.mainVCam.m_Lens.FieldOfView * Mathf.Deg2Rad;
 				float d = Mathf.Abs(game_camera.mianCameraArm.distance);
 				float p = (game_camera.mianCameraArm.pitch - 90f) * Mathf.Deg2Rad;
-				float w = mouseDelta.y / Screen.height + .5f;
+				float w_from = delta_from.y / Screen.height + .5f;
+				float w_to = delta_to.y / Screen.height + .5f;
 				float tan_half_fov = Mathf.Tan(f * .5f);
 				float tan_p = Mathf.Tan(p);
 				float sec_p = Mathf.Sqrt(1f + tan_p * tan_p);
-				float y_over_z = tan_half_fov * (2f * w - 1f);
-				float denom = 1f + tan_p * y_over_z;
-				float mag = d * Mathf.Abs(y_over_z) / Mathf.Abs(denom) * sec_p;
-				float sign = mouseDelta.y < 0f ? -1f : 1f;
-				mouseDelta.x *= d / denom * tan_half_fov * 2f / Screen.height;
-				mouseDelta.y = sign * mag;
-				ModBehaviour.aim += mouseDelta;
-				float defaultAimOffset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance) * 2;
+				float y_over_z_from = tan_half_fov * (2f * w_from - 1f);
+				float y_over_z_to = tan_half_fov * (2f * w_to - 1f);
+				float denom_from = 1f + tan_p * y_over_z_from;
+				float denom_to = 1f + tan_p * y_over_z_to;
+				float mag_from = d * Mathf.Abs(y_over_z_from) / Mathf.Abs(denom_from) * sec_p;
+				float mag_to = d * Mathf.Abs(y_over_z_to) / Mathf.Abs(denom_to) * sec_p;
+				float sign_from = delta_from.y < 0f ? -1f : 1f;
+				float sign_to = delta_to.y < 0f ? -1f : 1f;
+				ModBehaviour.aim.x += delta_from.x * d / denom_from * tan_half_fov * 2f / Screen.height
+					- delta_to.x * d / denom_to * tan_half_fov * 2f / Screen.height;
+				ModBehaviour.aim.y += sign_from * mag_from - sign_to * mag_to;
+				float defaultAimOffset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance) * 3;
 				float maxAimOffset = gun
 					? defaultAimOffset * gun.ADSAimDistanceFactor
 					: defaultAimOffset * 1.25f;
