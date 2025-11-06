@@ -58,8 +58,8 @@ namespace Enhanced_ADS
 			Vector2 center = new Vector2(Screen.width * .5f, Screen.height * .5f);
 			if (__instance.characterMainControl && __instance.characterMainControl.IsInAdsInput)
 			{
-				float ads_value = __instance.characterMainControl.AdsValue;
-				Vector2 screen_pos = (Vector2)I_aimScreenPoint.GetValue(__instance) + mouseDelta;
+				float ads_value = Mathf.Min(1, __instance.characterMainControl.AdsValue * 2);
+				Vector2 screen_pos = (Vector2)I_aimScreenPoint.GetValue(__instance);
 				bool aimingEnemyHead = false;
 				ItemAgent_Gun gun = __instance.characterMainControl.GetGun();
 				if (gun)
@@ -135,22 +135,30 @@ namespace Enhanced_ADS
 				float f = game_camera.mainVCam.m_Lens.FieldOfView * Mathf.Deg2Rad;
 				float d = Mathf.Abs(game_camera.mianCameraArm.distance);
 				float p = (game_camera.mianCameraArm.pitch - 90f) * Mathf.Deg2Rad;
+				float w_mouse = mouseDelta.y / Screen.height + .5f;
 				float w_from = delta_from.y / Screen.height + .5f;
 				float w_to = delta_to.y / Screen.height + .5f;
 				float tan_half_fov = Mathf.Tan(f * .5f);
 				float tan_p = Mathf.Tan(p);
 				float sec_p = Mathf.Sqrt(1f + tan_p * tan_p);
+				float y_over_z_mouse = tan_half_fov * (2f * w_mouse - 1f);
 				float y_over_z_from = tan_half_fov * (2f * w_from - 1f);
 				float y_over_z_to = tan_half_fov * (2f * w_to - 1f);
+				float denom_mouse = 1f + tan_p * y_over_z_mouse;
 				float denom_from = 1f + tan_p * y_over_z_from;
 				float denom_to = 1f + tan_p * y_over_z_to;
+				float mag_mouse = d * Mathf.Abs(y_over_z_mouse) / Mathf.Abs(denom_mouse) * sec_p;
 				float mag_from = d * Mathf.Abs(y_over_z_from) / Mathf.Abs(denom_from) * sec_p;
 				float mag_to = d * Mathf.Abs(y_over_z_to) / Mathf.Abs(denom_to) * sec_p;
+				float sign_mouse = mouseDelta.y < 0f ? -1f : 1f;
 				float sign_from = delta_from.y < 0f ? -1f : 1f;
 				float sign_to = delta_to.y < 0f ? -1f : 1f;
-				ModBehaviour.aim.x += delta_from.x * d / denom_from * tan_half_fov * 2f / Screen.height
-					- delta_to.x * d / denom_to * tan_half_fov * 2f / Screen.height;
-				ModBehaviour.aim.y += sign_from * mag_from - sign_to * mag_to;
+				ModBehaviour.aim.x += (
+					mouseDelta.x * d / denom_mouse
+					+ delta_from.x * d / denom_from
+					- delta_to.x * d / denom_to
+				) * tan_half_fov * 2f / Screen.height;
+				ModBehaviour.aim.y += sign_mouse * mag_mouse + sign_from * mag_from - sign_to * mag_to;
 				float defaultAimOffset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance) * 3;
 				float maxAimOffset = gun
 					? defaultAimOffset * gun.ADSAimDistanceFactor
