@@ -71,13 +71,14 @@ namespace Enhanced_ADS
 				{
 					screen_pos = (Vector2)I_ProcessMousePosViaRecoil.Invoke(__instance, new object[] { screen_pos, mouseDelta, gun });
 				}
+				int ads_offset = 20;
 				if (
 					!State.ads
 					&& (
-						screen_pos.x + mouseDelta.x < 0
-						|| screen_pos.x + mouseDelta.x > Screen.width
-						|| screen_pos.y + mouseDelta.y < 0
-						|| screen_pos.y + mouseDelta.y > Screen.height
+						screen_pos.x + mouseDelta.x < ads_offset
+						|| screen_pos.x + mouseDelta.x > Screen.width - ads_offset
+						|| screen_pos.y + mouseDelta.y < ads_offset
+						|| screen_pos.y + mouseDelta.y > Screen.height - ads_offset
 					)
 				)
 				{
