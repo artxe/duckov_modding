@@ -19,14 +19,14 @@ namespace Enhanced_ADS
 	}
 
 	public class State
-    {
+	{
 		public static bool ads = false;
 		public static Vector2 aim = Vector2.zero;
 		public static float delta = 0f;
-    }
+	}
 
 	[HarmonyPatch(typeof(GameCamera), "UpdateAimOffsetNormal")]
-	internal class GameCamera_UpdateAimOffsetNormal
+	internal class GameCamera__UpdateAimOffsetNormal
 	{
 		static FieldInfo I_offsetFromTargetX = AccessTools.Field(typeof(GameCamera), "offsetFromTargetX");
 		static FieldInfo I_offsetFromTargetZ = AccessTools.Field(typeof(GameCamera), "offsetFromTargetZ");
@@ -47,7 +47,7 @@ namespace Enhanced_ADS
 	}
 
 	[HarmonyPatch(typeof(InputManager), nameof(InputManager.SetAimInputUsingMouse))]
-	internal class InputManager_SetAimInputUsingMouse
+	internal class InputManager__SetAimInputUsingMouse
 	{
 		static MethodInfo Set_AimMousePosition = AccessTools.PropertySetter(typeof(InputManager), "AimMousePosition");
 		static FieldInfo I_aimCheckLayers = AccessTools.Field(typeof(InputManager), "aimCheckLayers");
@@ -90,10 +90,10 @@ namespace Enhanced_ADS
 					State.delta = Mathf.Min(1f, State.delta + Time.deltaTime * 3);
 					Vector2 next_screen_pos = screen_pos - (screen_pos - center) * State.delta;
 					if (screen_pos != next_screen_pos)
-                    {
+					{
 						Set_AimMousePosition.Invoke(__instance, new object[] { next_screen_pos });
 						I_aimScreenPoint.SetValue(__instance, next_screen_pos);
-                    }
+					}
 					GameCamera game_camera = GameCamera.Instance;
 					Vector2 delta_from = screen_pos - center;
 					Vector2 delta_to = next_screen_pos - center;
@@ -135,12 +135,12 @@ namespace Enhanced_ADS
 					ray = LevelManager.Instance.GameCamera.renderCamera.ScreenPointToRay(next_screen_pos + mouseDelta);
 				}
 				else
-			    {
+				{
 					screen_pos += mouseDelta;
 					Set_AimMousePosition.Invoke(__instance, new object[] { screen_pos });
 					I_aimScreenPoint.SetValue(__instance, screen_pos);
 					ray = LevelManager.Instance.GameCamera.renderCamera.ScreenPointToRay(screen_pos);
-                }
+				}
 				Plane plane = new Plane(Vector3.up, Vector3.up * (__instance.characterMainControl.transform.position.y + 0.5f));
 				plane.Raycast(ray, out var enter);
 				Vector3 vector = ray.origin + ray.direction * enter;
@@ -196,7 +196,7 @@ namespace Enhanced_ADS
 				}
 				I_aimingEnemyHead.SetValue(__instance, aimingEnemyHead);
 				I_inputAimPoint.SetValue(__instance, vector);
-        		__instance.characterMainControl.SetAimPoint(aimPoint);
+				__instance.characterMainControl.SetAimPoint(aimPoint);
 				return false;
 			}
 			else if (State.ads)
@@ -225,6 +225,25 @@ namespace Enhanced_ADS
 				State.delta = 0f;
 			}
 			return true;
+		}
+	}
+
+	[HarmonyPatch(typeof(ItemAgent_Gun), "TransToEmpty")]
+	internal class ItemAgent_Gun__TransToEmpty
+	{
+		static FieldInfo I_gunState = AccessTools.Field(typeof(ItemAgent_Gun), "gunState");
+		public static bool Prefix(ItemAgent_Gun __instance)
+		{
+			if (__instance.GunState == ItemAgent_Gun.GunStates.fire)
+			{
+				I_gunState.SetValue(__instance, ItemAgent_Gun.GunStates.empty);
+				__instance.CharacterReload();
+			}
+			else
+			{
+				I_gunState.SetValue(__instance, ItemAgent_Gun.GunStates.empty);
+			}
+			return false;
 		}
 	}
 }
