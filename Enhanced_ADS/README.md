@@ -6,6 +6,10 @@ https://github.com/artxe/duckov_modding
 
 
 
+> r8: v1.1.6
+> - While in ADS mode, display both the current aiming distance and the distance at which the gun's damage is reduced by half next to the aiming point.
+> - The camera no longer moves toward the aiming point when aiming beyond the weapon's range.
+
 > r7: v1.1.6
 > - Automatically reload when ammo runs out during continuous fire, without requiring another left click.
 

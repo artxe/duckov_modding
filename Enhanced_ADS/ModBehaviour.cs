@@ -2,6 +2,7 @@ using Duckov.Options;
 using Duckov.Utilities;
 using HarmonyLib;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 namespace Enhanced_ADS
 {
@@ -23,6 +24,23 @@ namespace Enhanced_ADS
 		public static bool ads = false;
 		public static Vector2 aim = Vector2.zero;
 		public static float delta = 0f;
+		public static TextMeshProUGUI out_of_range;
+	}
+
+	[HarmonyPatch(typeof(AimMarker), "LateUpdate")]
+	internal class AimMarker__LateUpdate
+	{
+		public static void Postfix(AimMarker __instance)
+		{
+			if (!State.out_of_range)
+			{
+				State.out_of_range = Object.Instantiate(GameplayDataSettings.UIStyle.TemplateTextUGUI);
+				State.out_of_range.fontSize = 18;
+				State.out_of_range.rectTransform.SetParent(__instance.aimMarkerUI, false);
+				State.out_of_range.rectTransform.anchoredPosition = new Vector2(30f, 0f);
+				State.out_of_range.rectTransform.pivot = new Vector2(0, 0);
+			}
+		}
 	}
 
 	[HarmonyPatch(typeof(GameCamera), "UpdateAimOffsetNormal")]
@@ -70,19 +88,41 @@ namespace Enhanced_ADS
 				if (gun)
 				{
 					screen_pos = (Vector2)I_ProcessMousePosViaRecoil.Invoke(__instance, new object[] { screen_pos, mouseDelta, gun });
-				}
-				int ads_offset = 20;
-				if (
-					!State.ads
-					&& (
-						screen_pos.x + mouseDelta.x < ads_offset
-						|| screen_pos.x + mouseDelta.x > Screen.width - ads_offset
-						|| screen_pos.y + mouseDelta.y < ads_offset
-						|| screen_pos.y + mouseDelta.y > Screen.height - ads_offset
+					int ads_offset = 20;
+					if (
+						!State.ads
+						&& (
+							screen_pos.x + mouseDelta.x < ads_offset
+							|| screen_pos.x + mouseDelta.x > Screen.width - ads_offset
+							|| screen_pos.y + mouseDelta.y < ads_offset
+							|| screen_pos.y + mouseDelta.y > Screen.height - ads_offset
+						)
 					)
-				)
-				{
-					State.ads = true;
+					{
+						GameCamera game_camera = GameCamera.Instance;
+						Vector2 predicted_aim = screen_pos + mouseDelta - center;
+						float f = game_camera.mainVCam.m_Lens.FieldOfView * Mathf.Deg2Rad;
+						float d = Mathf.Abs(game_camera.mianCameraArm.distance);
+						float p = (game_camera.mianCameraArm.pitch - 90f) * Mathf.Deg2Rad;
+						float w = predicted_aim.y / Screen.height + .5f;
+						float tan_half_fov = Mathf.Tan(f * .5f);
+						float tan_p = Mathf.Tan(p);
+						float sec_p = Mathf.Sqrt(1f + tan_p * tan_p);
+						float y_over_z = tan_half_fov * (2f * w - 1f);
+						float denom = 1f + tan_p * y_over_z;
+						float mag = d * Mathf.Abs(y_over_z) / Mathf.Abs(denom) * sec_p;
+						float sign = predicted_aim.y < 0f ? -1f : 1f;
+						predicted_aim.x = predicted_aim.x * d / denom * tan_half_fov * 2f / Screen.height;
+						predicted_aim.y = sign * mag;
+						float default_aim_offset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance);
+						float max_aim_offset = gun
+							? Mathf.Max(default_aim_offset * gun.ADSAimDistanceFactor, gun.BulletDistance)
+							: default_aim_offset * 1.25f;
+						if (max_aim_offset * max_aim_offset >= predicted_aim.sqrMagnitude)
+						{
+							State.ads = true;
+						}
+					}
 				}
 				Ray ray;
 				if (State.ads)
@@ -124,24 +164,25 @@ namespace Enhanced_ADS
 						- delta_to.x * d / denom_to
 					) * tan_half_fov * 2f / Screen.height;
 					State.aim.y += sign_mouse * mag_mouse + sign_from * mag_from - sign_to * mag_to;
-					float defaultAimOffset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance);
-					float maxAimOffset = gun
-						? Mathf.Max(defaultAimOffset * gun.ADSAimDistanceFactor, gun.BulletDistance)
-						: defaultAimOffset * 1.25f;
+					float default_aim_offset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance);
+					float max_aim_offset = gun
+						? Mathf.Max(default_aim_offset * gun.ADSAimDistanceFactor, gun.BulletDistance)
+						: default_aim_offset * 1.25f;
 					State.aim = Vector2.ClampMagnitude(
 						State.aim,
-						maxAimOffset
+						max_aim_offset
 					);
 					ray = LevelManager.Instance.GameCamera.renderCamera.ScreenPointToRay(next_screen_pos + mouseDelta);
 				}
 				else
 				{
-					screen_pos += mouseDelta;
+					screen_pos.x = Mathf.Clamp(screen_pos.x + mouseDelta.x, 0f, Screen.width);
+					screen_pos.y = Mathf.Clamp(screen_pos.y + mouseDelta.y, 0f, Screen.height);
 					Set_AimMousePosition.Invoke(__instance, new object[] { screen_pos });
 					I_aimScreenPoint.SetValue(__instance, screen_pos);
 					ray = LevelManager.Instance.GameCamera.renderCamera.ScreenPointToRay(screen_pos);
 				}
-				Plane plane = new Plane(Vector3.up, Vector3.up * (__instance.characterMainControl.transform.position.y + 0.5f));
+				Plane plane = new Plane(Vector3.up, Vector3.up * (__instance.characterMainControl.transform.position.y + .5f));
 				plane.Raycast(ray, out var enter);
 				Vector3 vector = ray.origin + ray.direction * enter;
 				Debug.DrawLine(vector, vector + Vector3.up * 3f, Color.yellow);
@@ -178,9 +219,9 @@ namespace Enhanced_ADS
 						Vector3 vector3 = Quaternion.AngleAxis(-2f * num, axis) * vector2;
 						Ray ray2 = new Ray(position + num2 * vector3, vector3);
 						if (
-							Physics.SphereCast(ray2, 0.02f, out var hittedCharacterDmgReceiverInfo, gun.BulletDistance, aimCheckLayers, QueryTriggerInteraction.Ignore)
-							&& hittedCharacterDmgReceiverInfo.distance > 0.1f
-							&& !Physics.SphereCast(ray2, 0.1f, out var _, hittedCharacterDmgReceiverInfo.distance, (LayerMask)I_obsticleLayers.GetValue(__instance), QueryTriggerInteraction.Ignore))
+							Physics.SphereCast(ray2, .02f, out var hittedCharacterDmgReceiverInfo, gun.BulletDistance, aimCheckLayers, QueryTriggerInteraction.Ignore)
+							&& hittedCharacterDmgReceiverInfo.distance > .1f
+							&& !Physics.SphereCast(ray2, .1f, out var _, hittedCharacterDmgReceiverInfo.distance, (LayerMask)I_obsticleLayers.GetValue(__instance), QueryTriggerInteraction.Ignore))
 						{
 							aimPoint = hittedCharacterDmgReceiverInfo.point;
 							break;
@@ -192,11 +233,21 @@ namespace Enhanced_ADS
 					Vector3 direction = ray.direction;
 					Vector3 rhs = hittedHead.collider.transform.position - hittedHead.point;
 					float num3 = Vector3.Dot(direction, rhs);
-					aimPoint = hittedHead.point + direction * num3 * 0.5f;
+					aimPoint = hittedHead.point + direction * num3 * .5f;
 				}
 				I_aimingEnemyHead.SetValue(__instance, aimingEnemyHead);
 				I_inputAimPoint.SetValue(__instance, vector);
 				__instance.characterMainControl.SetAimPoint(aimPoint);
+				State.out_of_range.gameObject.SetActive(gun);
+				if (gun)
+				{
+					double distance = Vector3.Distance(gun.muzzle.position, vector);
+					double range = gun.BulletDistance * .5f + .5f;
+					State.out_of_range.color = distance > range
+						? new Color(1f, .5f, 0f)
+						: Color.white;
+					State.out_of_range.text = $"{System.Math.Round(distance, 1)}/{System.Math.Round(range, 1)}M";
+				}
 				return false;
 			}
 			else if (State.ads)
@@ -224,6 +275,7 @@ namespace Enhanced_ADS
 				State.aim = Vector2.zero;
 				State.delta = 0f;
 			}
+			State.out_of_range.gameObject.SetActive(false);
 			return true;
 		}
 	}
