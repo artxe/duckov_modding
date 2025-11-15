@@ -1,10 +1,12 @@
 # Enhanced ADS
-During ADS or scoped view, the camera is positioned directly at the aiming point.  
-Until the aiming point goes off-screen, it behaves the same as hip fire.
+Sets the sensitivity in ADS mode to be the same as hipfire.
 
 https://github.com/artxe/duckov_modding
 
 
+
+> r9: v1.1.6
+> - In ADS mode, when aiming toward the edge of the screen, the camera no longer snaps, instead, it smoothly moves in that direction, similar to the feel in LOL.
 
 > r8: v1.1.6
 > - While in ADS mode, display both the current aiming distance and the distance at which the gun's damage is reduced by half next to the aiming point.
