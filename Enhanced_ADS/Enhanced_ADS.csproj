@@ -9,7 +9,6 @@
 		<Reference Include="$(DuckovPath)\Managed\ItemStatsSystem.dll"/>
 		<Reference Include="$(DuckovPath)\Managed\TeamSoda.*"/>
 		<Reference Include="$(DuckovPath)\Managed\Unity*"/>
-		<Reference Include="$(DuckovPath)\Managed\Unity*"/>
 		<Reference Include="0Harmony">
 			<HintPath>$(ProjectDir)0Harmony.dll</HintPath>
 		</Reference>

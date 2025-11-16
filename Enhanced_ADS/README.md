@@ -4,6 +4,8 @@ Sets the sensitivity in ADS mode to be the same as hipfire.
 https://github.com/artxe/duckov_modding
 
 
+> r10: v1.1.6
+> - Added an option to choose the camera behavior while ADS.
 
 > r9: v1.1.6
 > - In ADS mode, when aiming toward the edge of the screen, the camera no longer snaps, instead, it smoothly moves in that direction, similar to the feel in LOL.
