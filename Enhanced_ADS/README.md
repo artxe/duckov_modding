@@ -4,6 +4,10 @@ Sets the sensitivity in ADS mode to be the same as hipfire.
 https://github.com/artxe/duckov_modding
 
 
+> r11: v1.2.5
+> - Multilingual Support in Menu Options. (简体中文, 繁體中文, English, Français, Deutsch, 日本語, 한국어, Português (Brasil), Русский, Español)
+> - Fixed a vanilla game issue where the mouse cursor failed to align with the aim point when controlling recoil.
+
 > r10: v1.1.6
 > - Added an option to choose the camera behavior while ADS.
 

@@ -1,7 +1,15 @@
-## [Enhanced_ADS](./Enhanced_ADS/) 
-[Steam Workshop (tested on Duckov v1.1.6)](https://steamcommunity.com/sharedfiles/itemedittext/?id=3600556258)
+## [Death Rewind](./Death_Rewind/) 
+[Steam Workshop (tested on Duckov v1.2.5)](https://steamcommunity.com/sharedfiles/filedetails/?id=3615819913)
 
-During ADS or scoped view, the camera is positioned directly at the aiming point.  
-Until the aiming point goes off-screen, it behaves the same as hip fire.
+Upon death, your items are restored to their state before you went out.
+
+![image](./Death_Rewind/preview.png)
+
+
+
+## [Enhanced ADS](./Enhanced_ADS/) 
+[Steam Workshop (tested on Duckov v1.2.5)](https://steamcommunity.com/sharedfiles/itemedittext/?id=3600556258)
+
+Sets the sensitivity in ADS mode to be the same as hipfire.
 
 ![image](./Enhanced_ADS/preview.png)

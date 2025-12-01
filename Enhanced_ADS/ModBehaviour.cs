@@ -2,15 +2,17 @@ using Duckov.Options;
 using Duckov.Options.UI;
 using Duckov.Utilities;
 using HarmonyLib;
+using SodaCraft.Localizations;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 namespace Enhanced_ADS
 {
 	[HarmonyPatch(typeof(AimMarker), "LateUpdate")]
 	internal class AimMarker__LateUpdate
 	{
-		public static void Postfix(AimMarker __instance)
+		static void Postfix(AimMarker __instance)
 		{
 			if (!State.out_of_range)
 			{
@@ -27,37 +29,11 @@ namespace Enhanced_ADS
 	{
 		static FieldInfo I_offsetFromTargetX = AccessTools.Field(typeof(GameCamera), "offsetFromTargetX");
 		static FieldInfo I_offsetFromTargetZ = AccessTools.Field(typeof(GameCamera), "offsetFromTargetZ");
-		public static bool Prefix(GameCamera __instance, float deltaTime)
+		static bool Prefix(GameCamera __instance, float deltaTime)
 		{
 			I_offsetFromTargetX.SetValue(__instance, State.camera_offset.x);
 			I_offsetFromTargetZ.SetValue(__instance, State.camera_offset.y);
 			return false;
-		}
-	}
-	public class OptionsProvider_ads_mode_type : OptionsProviderBase
-	{
-		public enum Options
-		{
-			Trace_Aim_Point = 0,
-			Scrollable = 1
-		}
-		private static readonly string[] options = new[]
-		{
-			"Trace Aim Point",
-			"Scrollable"
-		};
-		public override string Key => "Enhanced_ADS.ads_camera_type";
-		public override string[] GetOptions()
-		{
-			return options;
-		}
-		public override string GetCurrentOption()
-		{
-			return options[(int)State.ads_mode_type];
-		}
-		public override void Set(int index)
-		{
-			State.ads_mode_type = (Options)index;
 		}
 	}
 	[HarmonyPatch(typeof(InputManager), nameof(InputManager.SetAimInputUsingMouse))]
@@ -71,10 +47,18 @@ namespace Enhanced_ADS
 		static FieldInfo I_aimScreenPoint = AccessTools.Field(typeof(InputManager), "aimScreenPoint");
 		static FieldInfo I_hittedHead = AccessTools.Field(typeof(InputManager), "hittedHead");
 		static FieldInfo I_inputAimPoint = AccessTools.Field(typeof(InputManager), "inputAimPoint");
+		static FieldInfo I_inputMousePosition = AccessTools.Field(typeof(InputManager), "inputMousePosition");
 		static FieldInfo I_obsticleLayers = AccessTools.Field(typeof(InputManager), "obsticleLayers");
 		static MethodInfo I_ProcessMousePosViaRecoil = AccessTools.Method(typeof(InputManager), "ProcessMousePosViaRecoil");
 		static FieldInfo I_GameCamera_defaultAimOffset = AccessTools.Field(typeof(GameCamera), "defaultAimOffset");
-		public static bool Prefix(InputManager __instance, Vector2 mouseDelta)
+		static void Postfix(InputManager __instance, Vector2 mouseDelta)
+		{
+			if (__instance.characterMainControl && (bool)Get_InputActived.Invoke(null, null))
+			{
+				Mouse.current.WarpCursorPosition( __instance.AimScreenPoint);
+			}
+		}
+		static bool Prefix(InputManager __instance, Vector2 mouseDelta)
 		{
 			if (!__instance.characterMainControl || !(bool)Get_InputActived.Invoke(null, null))
 			{
@@ -323,7 +307,7 @@ namespace Enhanced_ADS
 	internal class ItemAgent_Gun__TransToEmpty
 	{
 		static FieldInfo I_gunState = AccessTools.Field(typeof(ItemAgent_Gun), "gunState");
-		public static bool Prefix(ItemAgent_Gun __instance)
+		static bool Prefix(ItemAgent_Gun __instance)
 		{
 			if (__instance.GunState == ItemAgent_Gun.GunStates.fire)
 			{
@@ -349,10 +333,161 @@ namespace Enhanced_ADS
 			harmony.UnpatchAll(harmony.Id);
 		}
 	}
+	public class OptionsProvider_ads_mode_type : OptionsProviderBase
+	{
+		public enum Options
+		{
+			Trace_Aim_Point = 0,
+			Scrollable = 1
+		}
+		private static string[] options
+		{
+			get
+			{
+				switch (LocalizationManager.CurrentLanguage)
+				{
+					case SystemLanguage.ChineseSimplified:// 简体中文
+						return new[]
+						{
+							"瞄准点为中心",
+							"可滚动"
+						};
+					case SystemLanguage.ChineseTraditional:// 繁體中文
+						return new[]
+						{
+							"以瞄準點為中心",
+							"可滾動"
+						};
+					case SystemLanguage.English:// English
+						return new[]
+						{
+							"Center of Aim Point",
+							"Scrollable"
+						};
+					case SystemLanguage.French:// Français
+						return new[]
+						{
+							"Centré sur le point visé",
+							"Déroulable"
+						};
+					case SystemLanguage.German:// Deutsch
+						return new[]
+						{
+							"Zielpunkt zentriert",
+							"Scrollbar"
+						};
+					case SystemLanguage.Japanese:// 日本語
+						return new[]
+						{
+							"照準点中心",
+							"スクロール可能"
+						};
+					case SystemLanguage.Korean:// 한국어
+						return new[]
+						{
+							"조준점 중심",
+							"스크롤 가능"
+						};
+					case SystemLanguage.Portuguese:// Português (Brasil)
+						return new[]
+						{
+							"Centralizar no ponto de mira",
+							"Rolável"
+						};
+					case SystemLanguage.Russian:// Русский
+						return new[]
+						{
+							"Центрировать по точке прицеливания",
+							"Прокручиваемый"
+						};
+					case SystemLanguage.Spanish:// Español
+						return new[]
+						{
+							"Centrado en el punto de mira",
+							"Desplazable"
+						};
+					default:
+						return new[]
+						{
+							"Center of Aim Point",
+							"Scrollable"
+						};
+				}
+			}
+		}
+		public override string Key => "Enhanced_ADS.ads_camera_type";
+		public override string[] GetOptions()
+		{
+			return options;
+		}
+		public override string GetCurrentOption()
+		{
+			return options[(int)State.ads_mode_type];
+		}
+		public override void Set(int index)
+		{
+			State.ads_mode_type = (Options)index;
+		}
+	}
+	[HarmonyPatch(typeof(OptionsUIEntry_Dropdown), "OnSetLanguage")]
+	internal class OptionsUIEntry_Dropdown__OnSetLanguage
+	{
+		static FieldInfo I_label = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "label");
+		static FieldInfo I_provider = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "provider");
+
+		static void Postfix(OptionsUIEntry_Dropdown __instance, SystemLanguage language)
+		{
+			if (__instance.gameObject.name != "Enhanced_ADS.ads_mode_type")
+			{
+				return;
+			}
+			I_provider.SetValue(__instance, I_provider.GetValue(__instance));
+			string label_text;
+			switch (language)
+			{
+				case SystemLanguage.ChineseSimplified:// 简体中文
+					label_text = "ADS 摄像机模式";
+					break;
+				case SystemLanguage.ChineseTraditional:// 繁體中文
+					label_text = "ADS 攝影機模式";
+					break;
+				case SystemLanguage.English:// English
+					label_text = "ADS Camera Mode";
+					break;
+				case SystemLanguage.French:// Français
+					label_text = "Mode caméra ADS";
+					break;
+				case SystemLanguage.German:// Deutsch
+					label_text = "ADS-Kameramodus";
+					break;
+				case SystemLanguage.Japanese:// 日本語
+					label_text = "ADSカメラモード";
+					break;
+				case SystemLanguage.Korean:// 한국어
+					label_text = "ADS 카메라 모드";
+					break;
+				case SystemLanguage.Portuguese:// Português (Brasil)
+					label_text = "Modo de câmera ADS";
+					break;
+				case SystemLanguage.Russian:// Русский
+					label_text = "Режим камеры ADS";
+					break;
+				case SystemLanguage.Spanish:// Español
+					label_text = "Modo de cámara ADS";
+					break;
+				default:
+					label_text = "ADS Camera Mode";
+					break;
+			}
+			((TextMeshProUGUI)I_label.GetValue(__instance)).text = label_text;
+		}
+	}
 	[HarmonyPatch(typeof(OptionsUIEntry_Dropdown), "Start")]
 	internal class OptionsUIEntry_Dropdown__Start
 	{
-		public static void Postfix(OptionsUIEntry_Dropdown __instance)
+		static FieldInfo I_label = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "label");
+		static FieldInfo I_provider = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "provider");
+		static void Postfix(OptionsUIEntry_Dropdown __instance)
 		{
 			if (__instance.gameObject.name != "UI_HurtVisual")
 			{
@@ -364,13 +499,45 @@ namespace Enhanced_ADS
 			ads_mode_option.name = "Enhanced_ADS.ads_mode_type";
 			ads_mode_option.SetActive(true);
 			OptionsUIEntry_Dropdown entry = ads_mode_option.GetComponent<OptionsUIEntry_Dropdown>();
-			typeof(OptionsUIEntry_Dropdown)
-				.GetField("provider", BindingFlags.NonPublic | BindingFlags.Instance)
-				.SetValue(entry, ads_mode_option.AddComponent<OptionsProvider_ads_mode_type>());
-			((TextMeshProUGUI)typeof(OptionsUIEntry_Dropdown)
-				.GetField("label", BindingFlags.NonPublic | BindingFlags.Instance)
-				.GetValue(entry))
-				.text = "ADS Camera Mode";
+			I_provider.SetValue(entry, ads_mode_option.AddComponent<OptionsProvider_ads_mode_type>());
+			string label_text;
+			switch (LocalizationManager.CurrentLanguage)
+			{
+				case SystemLanguage.ChineseSimplified:// 简体中文
+					label_text = "ADS 摄像机模式";
+					break;
+				case SystemLanguage.ChineseTraditional:// 繁體中文
+					label_text = "ADS 攝影機模式";
+					break;
+				case SystemLanguage.English:// English
+					label_text = "ADS Camera Mode";
+					break;
+				case SystemLanguage.French:// Français
+					label_text = "Mode caméra ADS";
+					break;
+				case SystemLanguage.German:// Deutsch
+					label_text = "ADS-Kameramodus";
+					break;
+				case SystemLanguage.Japanese:// 日本語
+					label_text = "ADSカメラモード";
+					break;
+				case SystemLanguage.Korean:// 한국어
+					label_text = "ADS 카메라 모드";
+					break;
+				case SystemLanguage.Portuguese:// Português (Brasil)
+					label_text = "Modo de câmera ADS";
+					break;
+				case SystemLanguage.Russian:// Русский
+					label_text = "Режим камеры ADS";
+					break;
+				case SystemLanguage.Spanish:// Español
+					label_text = "Modo de cámara ADS";
+					break;
+				default:
+					label_text = "ADS Camera Mode";
+					break;
+			}
+			((TextMeshProUGUI)I_label.GetValue(entry)).text = label_text;
 		}
 	}
 	public class State
