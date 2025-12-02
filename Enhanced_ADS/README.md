@@ -4,6 +4,9 @@ Sets the sensitivity in ADS mode to be the same as hipfire.
 https://github.com/artxe/duckov_modding
 
 
+> r12: v1.2.5
+> - When the game loses focus, it no longer synchronizes the mouse cursor position with the aim point (fixes an issue when using another monitor in a dual-monitor setup).
+
 > r11: v1.2.5
 > - Multilingual Support in Menu Options. (简体中文, 繁體中文, English, Français, Deutsch, 日本語, 한국어, Português (Brasil), Русский, Español)
 > - Fixed a vanilla game issue where the mouse cursor failed to align with the aim point when controlling recoil.

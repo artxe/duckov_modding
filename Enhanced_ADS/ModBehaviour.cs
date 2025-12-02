@@ -53,7 +53,11 @@ namespace Enhanced_ADS
 		static FieldInfo I_GameCamera_defaultAimOffset = AccessTools.Field(typeof(GameCamera), "defaultAimOffset");
 		static void Postfix(InputManager __instance, Vector2 mouseDelta)
 		{
-			if (__instance.characterMainControl && (bool)Get_InputActived.Invoke(null, null))
+			if (
+				__instance.characterMainControl
+				&& (bool)Get_InputActived.Invoke(null, null)
+				&& Application.isFocused
+			)
 			{
 				Mouse.current.WarpCursorPosition( __instance.AimScreenPoint);
 			}
@@ -434,7 +438,6 @@ namespace Enhanced_ADS
 	{
 		static FieldInfo I_label = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "label");
 		static FieldInfo I_provider = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "provider");
-
 		static void Postfix(OptionsUIEntry_Dropdown __instance, SystemLanguage language)
 		{
 			if (__instance.gameObject.name != "Enhanced_ADS.ads_mode_type")
