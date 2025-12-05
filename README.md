@@ -1,3 +1,12 @@
+## [Black Market Price Comparison](./Black_Market_Price_Comparison/) 
+[Steam Workshop (tested on Duckov v1.2.5)](https://steamcommunity.com/sharedfiles/filedetails/?id=3618087266)
+
+Shows how many times higher the black market item price is compared to its original price.
+
+![image](./Black_Market_Price_Comparison/preview.png)
+
+
+
 ## [Death Rewind](./Death_Rewind/) 
 [Steam Workshop (tested on Duckov v1.2.5)](https://steamcommunity.com/sharedfiles/filedetails/?id=3615819913)
 
