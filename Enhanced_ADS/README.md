@@ -4,6 +4,10 @@ Sets the sensitivity in ADS mode to be the same as hipfire.
 https://github.com/artxe/duckov_modding
 
 
+> r13: v1.2.5
+> - Fixed an issue where the option settings would reset upon restarting the game.
+> - An Adaptive Sensitivity option has been added, which behaves similarly to the vanilla system but offers better visibility and more consistent sensitivity.
+
 > r12: v1.2.5
 > - When the game loses focus, it no longer synchronizes the mouse cursor position with the aim point (fixes an issue when using another monitor in a dual-monitor setup).
 

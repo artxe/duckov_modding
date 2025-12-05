@@ -6,7 +6,7 @@ namespace Death_Rewind
 	[HarmonyPatch(typeof(ItemShortcut), "OnCollectSaveData")]
 	internal class ItemShortcut__OnCollectSaveData
 	{
-		public static bool Prefix(ItemShortcut __instance)
+		static bool Prefix(ItemShortcut __instance)
 		{
 			if (LevelManager.Instance.IsRaidMap && CharacterMainControl.Main.Health.IsDead)
 			{
@@ -19,7 +19,7 @@ namespace Death_Rewind
 	internal class LevelManager__SaveMainCharacter
 	{
 		static FieldInfo I_dieTask = AccessTools.Field(typeof(LevelManager), "dieTask");
-		public static bool Prefix(LevelManager __instance)
+		static bool Prefix(LevelManager __instance)
 		{
 			if (
 				!LevelConfig.SaveCharacter
@@ -33,7 +33,7 @@ namespace Death_Rewind
 	}
 	public class ModBehaviour : Duckov.Modding.ModBehaviour
 	{
-		private Harmony harmony = new Harmony("Death_Rewind.Harmony");
+		Harmony harmony = new Harmony("Death_Rewind.Harmony");
 		void Awake()
 		{
 			harmony.PatchAll(Assembly.GetExecutingAssembly());

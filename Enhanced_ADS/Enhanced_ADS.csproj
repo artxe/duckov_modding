@@ -6,6 +6,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<Reference Include="$(DuckovPath)\Managed\Cinemachine.dll"/>
+		<Reference Include="$(DuckovPath)\Managed\EasySave3.dll"/>
 		<Reference Include="$(DuckovPath)\Managed\ItemStatsSystem.dll"/>
 		<Reference Include="$(DuckovPath)\Managed\SodaLocalization.dll"/>
 		<Reference Include="$(DuckovPath)\Managed\TeamSoda.*"/>
