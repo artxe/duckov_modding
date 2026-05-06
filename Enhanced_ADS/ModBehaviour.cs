@@ -1,3 +1,4 @@
+using Duckov.CustomOptions;
 using Duckov.Options;
 using Duckov.Options.UI;
 using Duckov.Utilities;
@@ -31,7 +32,7 @@ namespace Enhanced_ADS
 	{
 		static FieldInfo I_offsetFromTargetX = AccessTools.Field(typeof(GameCamera), "offsetFromTargetX");
 		static FieldInfo I_offsetFromTargetZ = AccessTools.Field(typeof(GameCamera), "offsetFromTargetZ");
-		static bool Prefix(GameCamera __instance, float deltaTime)
+		static bool Prefix(GameCamera __instance)
 		{
 			I_offsetFromTargetX.SetValue(__instance, State.camera_offset.x);
 			I_offsetFromTargetZ.SetValue(__instance, State.camera_offset.y);
@@ -53,7 +54,7 @@ namespace Enhanced_ADS
 		static FieldInfo I_obsticleLayers = AccessTools.Field(typeof(InputManager), "obsticleLayers");
 		static MethodInfo I_ProcessMousePosViaRecoil = AccessTools.Method(typeof(InputManager), "ProcessMousePosViaRecoil");
 		static FieldInfo I_GameCamera_defaultAimOffset = AccessTools.Field(typeof(GameCamera), "defaultAimOffset");
-		static void Postfix(InputManager __instance, Vector2 mouseDelta)
+		static void Postfix(InputManager __instance)
 		{
 			if (
 				__instance.characterMainControl
@@ -61,7 +62,7 @@ namespace Enhanced_ADS
 				&& Application.isFocused
 			)
 			{
-				Mouse.current.WarpCursorPosition( __instance.AimScreenPoint);
+				Mouse.current.WarpCursorPosition(__instance.AimScreenPoint);
 			}
 		}
 		static bool Prefix(InputManager __instance, Vector2 mouseDelta)
@@ -76,81 +77,75 @@ namespace Enhanced_ADS
 				return true;
 			}
 			mouseDelta *= OptionsManager.MouseSensitivity / 10f;
-			float max_range = gun.BulletDistance + .5f;
 			Vector3 char_pos = __instance.characterMainControl.transform.position;
+			float aim_range =  Vector3.Distance(char_pos, gun.muzzle.position) + gun.BulletDistance + .5f;
+			Vector2 prev_aim_pos = (Vector2)Get_AimMousePosition.Invoke(__instance, null);
 			Vector2 aim_pos = (Vector2)I_ProcessMousePosViaRecoil.Invoke(__instance, new object[] {
-				(Vector2)Get_AimMousePosition.Invoke(__instance, null), 
+				prev_aim_pos,
 				mouseDelta,
 				gun
 			});
-			bool aimingEnemyHead = false;
+			bool aiming_enemy_head = false;
+			Vector2 center = new Vector2(Screen.width * .5f, Screen.height * .5f);
 			if (__instance.characterMainControl.IsInAdsInput)
 			{
 				int screen_edge_offset = 15;
-				Vector2 center = new Vector2(Screen.width * .5f, Screen.height * .5f);
 				if (State.ads_mode_type == OptionsProvider_ads_mode_type.Options.Adaptive_Sensitivity)
 				{
-					Vector2 max_offset = world_offset_to_screen(
-						new Vector2(max_range, max_range) + screen_offset_to_world(-new Vector2(Screen.width * .5f - screen_edge_offset, Screen.height * .5f - screen_edge_offset))
-					);
-					float x_mul = (Screen.width * .5f - screen_edge_offset) / (Screen.width * .5f - screen_edge_offset + max_offset.x);
-					float y_mul = (Screen.height * .5f - screen_edge_offset) / (Screen.height * .5f - screen_edge_offset + max_offset.y);
-					Vector2 delta = aim_pos - center;
-					if (State.camera_offset == Vector2.zero && delta != Vector2.zero)
+					float current_fov = GameCamera.Instance.renderCamera.fieldOfView;
+					if (State.prev_fov > 0f && !Mathf.Approximately(current_fov, State.prev_fov))
 					{
-						delta += mouseDelta;
-						delta.x *= x_mul;
-						delta.y *= y_mul;
-						aim_pos = center + delta;
+						aim_pos = fov_correct(aim_pos, center, State.prev_fov);
+						prev_aim_pos = fov_correct(prev_aim_pos, center, State.prev_fov);
+					}
+					State.prev_fov = current_fov;
+					var (world_edge_x, world_edge_y_up, world_edge_y_down, max_camera_x, max_camera_y_up, max_camera_y_down) = camera_bounds(aim_range, center, screen_edge_offset);
+					if (State.delta == 0f)
+					{
+						State.ads_world_aim = screen_offset_to_world(aim_pos - center);
 					}
 					else
 					{
-						mouseDelta.x *= x_mul;
-						mouseDelta.y *= y_mul;
-						aim_pos += mouseDelta;
-						delta += mouseDelta;
+						State.ads_world_aim += screen_offset_to_world(aim_pos - center) - screen_offset_to_world(prev_aim_pos - center);
 					}
-					Vector2 ratio = new Vector2(
-						delta.x / (Screen.width * .5f - screen_edge_offset),
-						delta.y / (Screen.height * .5f - screen_edge_offset)
+					State.delta = Mathf.Min(1f, State.delta + Time.deltaTime * 3);
+					float current_y_ratio = State.ads_world_aim.y > 0 ? (aim_range - world_edge_y_up) : (aim_range - world_edge_y_down);
+					State.camera_offset = new Vector2(
+						Mathf.Clamp(State.delta * State.ads_world_aim.x * (aim_range - world_edge_x) / aim_range, -max_camera_x, max_camera_x),
+						Mathf.Clamp(State.delta * State.ads_world_aim.y * current_y_ratio / aim_range, -max_camera_y_down, max_camera_y_up)
 					);
-					State.camera_offset = -screen_offset_to_world(-ratio * max_offset);
+					aim_pos = center + world_offset_to_screen(State.ads_world_aim - State.camera_offset);
+					Vector2 new_aim_pos = new Vector2(
+						Mathf.Clamp(aim_pos.x + mouseDelta.x, 0, Screen.width),
+						Mathf.Clamp(aim_pos.y + mouseDelta.y, 0, Screen.height)
+					);
+					State.ads_world_aim = screen_offset_to_world(new_aim_pos - center) + State.camera_offset;
+					aim_pos = new_aim_pos;
 				}
 				else if (State.ads_mode_type == OptionsProvider_ads_mode_type.Options.Trace_Aim_Point)
 				{
-					if (
-						!State.tracking
-						&& (
-							aim_pos.x < screen_edge_offset
-							|| aim_pos.x > Screen.width - screen_edge_offset
-							|| aim_pos.y < screen_edge_offset
-							|| aim_pos.y > Screen.height - screen_edge_offset
-						)
-					)
+					State.prev_fov = GameCamera.Instance.renderCamera.fieldOfView;
+					if (State.delta == 0f)
 					{
-						Vector2 predicted_offset = screen_offset_to_world(aim_pos - center + mouseDelta);
-						if (max_range * max_range >= predicted_offset.sqrMagnitude)
-						{
-							State.tracking = true;
-						}
-					}
-					if (State.tracking)
-					{
-						State.delta = Mathf.Min(1f, State.delta + Time.deltaTime * 3);
-						Vector2 next_aim_pos = aim_pos - (aim_pos - center) * State.delta;
-						Vector2 delta_from = aim_pos - center;
-						Vector2 delta_to = next_aim_pos - center;
-						State.camera_offset += screen_offset_to_world(mouseDelta) + screen_offset_to_world(delta_from) - screen_offset_to_world(delta_to);
-						State.camera_offset = Vector2.ClampMagnitude(State.camera_offset, max_range);
-						aim_pos = next_aim_pos;
+						State.ads_world_aim = screen_offset_to_world(aim_pos - center);
 					}
 					else
 					{
-						aim_pos += mouseDelta;
+						State.ads_world_aim += screen_offset_to_world(mouseDelta);
 					}
+					State.ads_world_aim = Vector2.ClampMagnitude(State.ads_world_aim, aim_range);
+					State.delta = Mathf.Min(1f, State.delta + Time.deltaTime * 3);
+					State.camera_offset = State.ads_world_aim * State.delta;
+					aim_pos = center + world_offset_to_screen(State.ads_world_aim - State.camera_offset);
 				}
 				else if (State.ads_mode_type == OptionsProvider_ads_mode_type.Options.Scrollable)
 				{
+					float current_fov = GameCamera.Instance.renderCamera.fieldOfView;
+					if (State.prev_fov > 0f && !Mathf.Approximately(current_fov, State.prev_fov))
+					{
+						aim_pos = fov_correct(aim_pos, center, State.prev_fov);
+					}
+					State.prev_fov = current_fov;
 					aim_pos += mouseDelta;
 					if (
 						aim_pos.x < screen_edge_offset
@@ -160,43 +155,49 @@ namespace Enhanced_ADS
 					)
 					{
 						Vector2 camera_move = Vector2.zero;
-						if (aim_pos.x < screen_edge_offset)
-						{
+						if (aim_pos.x < screen_edge_offset) {
 							camera_move.x -= Time.deltaTime;
-						} else if (aim_pos.x > Screen.width - screen_edge_offset)
-						{
+						} else if (aim_pos.x > Screen.width - screen_edge_offset) {
 							camera_move.x += Time.deltaTime;
 						}
-						if (aim_pos.y < screen_edge_offset)
-						{
+						if (aim_pos.y < screen_edge_offset) {
 							camera_move.y -= Time.deltaTime;
-						}
-						else if (aim_pos.y > Screen.height - screen_edge_offset)
-						{
+						} else if (aim_pos.y > Screen.height - screen_edge_offset) {
 							camera_move.y += Time.deltaTime;
 						}
-						State.camera_offset += screen_offset_to_world(camera_move * Screen.width * 2.5f);
-						float default_aim_offset = (float)I_GameCamera_defaultAimOffset.GetValue(GameCamera.Instance);
-						float max_aim_offset = default_aim_offset * gun.ADSAimDistanceFactor + gun.BulletDistance / 2;
-						State.camera_offset = Vector2.ClampMagnitude(
-							State.camera_offset,
-							max_aim_offset
-						);
+						var (_, _, _, max_camera_x, max_camera_y_up, max_camera_y_down) = camera_bounds(aim_range, center, screen_edge_offset);
+						Vector2 delta_camera = screen_offset_to_world(camera_move * Screen.width * 2.5f);
+						Vector2 new_camera_offset_scroll = State.camera_offset + delta_camera;
+						State.camera_offset.x = Mathf.Clamp(new_camera_offset_scroll.x, -max_camera_x, max_camera_x);
+						State.camera_offset.y = Mathf.Clamp(new_camera_offset_scroll.y, -max_camera_y_down, max_camera_y_up);
 					}
 				}
-				State.out_of_range.gameObject.SetActive(true);
+				State.out_of_range?.gameObject.SetActive(true);
 			}
 			else
 			{
-				aim_pos += mouseDelta;
-				if (State.camera_offset != Vector2.zero && State.ads_mode_type == OptionsProvider_ads_mode_type.Options.Trace_Aim_Point)
+				float current_fov = GameCamera.Instance.renderCamera.fieldOfView;
+				if (State.delta > 0f && State.ads_mode_type != OptionsProvider_ads_mode_type.Options.Scrollable)
 				{
-					aim_pos += world_offset_to_screen(State.camera_offset);
+					aim_pos = center + world_offset_to_screen(State.ads_world_aim);
 				}
+				else
+				{
+					if (State.camera_offset != Vector2.zero)
+					{
+						aim_pos += world_offset_to_screen(State.camera_offset);
+					}
+					if (State.prev_fov > 0f && !Mathf.Approximately(current_fov, State.prev_fov))
+					{
+						aim_pos = fov_correct(aim_pos, center, State.prev_fov);
+					}
+				}
+				State.prev_fov = current_fov;
+				aim_pos += mouseDelta;
+				State.ads_world_aim = Vector2.zero;
 				State.camera_offset = Vector2.zero;
 				State.delta = 0f;
-				State.out_of_range.gameObject.SetActive(false);
-				State.tracking = false;
+				State.out_of_range?.gameObject.SetActive(false);
 			}
 			aim_pos.x = Mathf.Clamp(aim_pos.x, 0, Screen.width);
 			aim_pos.y = Mathf.Clamp(aim_pos.y, 0, Screen.height);
@@ -207,15 +208,15 @@ namespace Enhanced_ADS
 			plane.Raycast(ray, out var enter);
 			Vector3 vector = ray.origin + ray.direction * enter;
 			Debug.DrawLine(vector, vector + Vector3.up * 3f, Color.yellow);
-			Vector3 aimPoint = vector;
-			RaycastHit hittedHead = (RaycastHit)I_hittedHead.GetValue(__instance);
+			Vector3 aim_point = vector;
+			RaycastHit hitted_head = (RaycastHit)I_hittedHead.GetValue(__instance);
 			if (gun && __instance.characterMainControl.CanControlAim())
 			{
-				if (Physics.Raycast(ray, out hittedHead, 100f, 1 << LayerMask.NameToLayer("HeadCollider")))
+				if (Physics.Raycast(ray, out hitted_head, 100f, 1 << LayerMask.NameToLayer("HeadCollider")))
 				{
-					aimingEnemyHead = true;
+					aiming_enemy_head = true;
 				}
-				I_hittedHead.SetValue(__instance, hittedHead);
+				I_hittedHead.SetValue(__instance, hitted_head);
 				Vector3 position = char_pos;
 				if (gun)
 				{
@@ -225,59 +226,68 @@ namespace Enhanced_ADS
 				vector2.y = 0f;
 				vector2.Normalize();
 				Vector3 axis = Vector3.Cross(vector2, ray.direction);
-				LayerMask aimCheckLayers = GameplayDataSettings.Layers.damageReceiverLayerMask;
-				I_aimCheckLayers.SetValue(__instance, aimCheckLayers);
-				for (int i = 0; i < 45f; i++)
+				LayerMask aim_check_layers = GameplayDataSettings.Layers.damageReceiverLayerMask;
+				I_aimCheckLayers.SetValue(__instance, aim_check_layers);
+				for (int i = 0; i < 45; i++)
 				{
 					int num = i;
 					if (i > 23)
 					{
-						num = -(i - 23);
+						num = -i + 23;
 					}
 					float num2 = 1.5f;
 					Vector3 vector3 = Quaternion.AngleAxis(-2f * num, axis) * vector2;
 					Ray ray2 = new Ray(position + num2 * vector3, vector3);
 					if (
-						Physics.SphereCast(ray2, .02f, out var hittedCharacterDmgReceiverInfo, gun.BulletDistance, aimCheckLayers, QueryTriggerInteraction.Ignore)
-						&& hittedCharacterDmgReceiverInfo.distance > .1f
-						&& !Physics.SphereCast(ray2, .1f, out var _, hittedCharacterDmgReceiverInfo.distance, (LayerMask)I_obsticleLayers.GetValue(__instance), QueryTriggerInteraction.Ignore))
+						Physics.SphereCast(ray2, .02f, out var hitted_character_dmg_receiver_info, gun.BulletDistance, aim_check_layers, QueryTriggerInteraction.Ignore)
+						&& hitted_character_dmg_receiver_info.distance > .1f
+						&& !Physics.SphereCast(ray2, .1f, out var _, hitted_character_dmg_receiver_info.distance, (LayerMask)I_obsticleLayers.GetValue(__instance), QueryTriggerInteraction.Ignore))
 					{
-						aimPoint = hittedCharacterDmgReceiverInfo.point;
+						aim_point = hitted_character_dmg_receiver_info.point;
 						break;
 					}
 				}
 			}
-			if (aimingEnemyHead)
+			if (aiming_enemy_head)
 			{
 				Vector3 direction = ray.direction;
-				Vector3 rhs = hittedHead.collider.transform.position - hittedHead.point;
+				Vector3 rhs = hitted_head.collider.transform.position - hitted_head.point;
 				float num3 = Vector3.Dot(direction, rhs);
-				aimPoint = hittedHead.point + direction * num3 * .5f;
+				aim_point = hitted_head.point + direction * num3 * .5f;
 			}
-			I_aimingEnemyHead.SetValue(__instance, aimingEnemyHead);
+			I_aimingEnemyHead.SetValue(__instance, aiming_enemy_head);
 			I_inputAimPoint.SetValue(__instance, vector);
-			__instance.characterMainControl.SetAimPoint(aimPoint);
+			__instance.characterMainControl.SetAimPoint(aim_point);
 			if (__instance.characterMainControl.IsInAdsInput)
 			{
 				double distance = Vector3.Distance(gun.muzzle.position, vector);
 				if (Vector3.Distance(char_pos, gun.muzzle.position) > Vector3.Distance(char_pos, vector))
 				{
-					distance *= -1;
+					distance = 0;
 				}
-				double range = gun.BulletDistance * .5f;
-				State.out_of_range.color = distance <= range
-					? Color.white
-					: distance <= max_range
-						? new Color(1f, .5f, 0f)
-						: Color.red;
-				State.out_of_range.text = $"{System.Math.Round(distance, 1)}/{System.Math.Round(range, 1)}M";
+				if (State.out_of_range != null)
+				{
+					State.out_of_range.color = distance <= gun.BulletDistance * 0.5f + 0.5f
+						? Color.white
+						: distance <= gun.BulletDistance + 0.5f
+							? new Color(1f, .5f, 0f)
+							: Color.red;
+					State.out_of_range.text = $"{System.Math.Round(distance, 1)}/{System.Math.Round(gun.BulletDistance * 0.5f, 1)}M";
+					float tw = State.out_of_range.preferredWidth;
+					float th = Mathf.Max(State.out_of_range.preferredHeight, State.out_of_range.fontSize * 1.5f) * 1.5f;
+					float offset = 30f;
+					float cs = State.out_of_range.canvas?.scaleFactor ?? 1f;
+					float tx = Mathf.Min(offset, (Screen.width - aim_pos.x) / cs - tw - offset);
+					float ty = Mathf.Min(0f, (Screen.height - aim_pos.y) / cs - th - offset);
+					State.out_of_range.rectTransform.anchoredPosition = new Vector2(tx, ty);
+				}
 			}
 			return false;
 		}
-		static Vector2 screen_offset_to_world(Vector2 vector)
+		static Vector2 screen_offset_to_world(Vector2 vector, float? fov = null)
 		{
 			GameCamera game_camera = GameCamera.Instance;
-			float f = game_camera.mainVCam.m_Lens.FieldOfView * Mathf.Deg2Rad;
+			float f = (fov ?? game_camera.renderCamera.fieldOfView) * Mathf.Deg2Rad;
 			float d = Mathf.Abs(game_camera.mianCameraArm.distance);
 			float p = (game_camera.mianCameraArm.pitch - 90f) * Mathf.Deg2Rad;
 			float w = vector.y / Screen.height + .5f;
@@ -296,7 +306,7 @@ namespace Enhanced_ADS
 		static Vector2 world_offset_to_screen(Vector2 vector)
 		{
 			GameCamera game_camera = GameCamera.Instance;
-			float f = game_camera.mainVCam.m_Lens.FieldOfView * Mathf.Deg2Rad;
+			float f = game_camera.renderCamera.fieldOfView * Mathf.Deg2Rad;
 			float d = Mathf.Abs(game_camera.mianCameraArm.distance);
 			float p = (game_camera.mianCameraArm.pitch - 90f) * Mathf.Deg2Rad;
 			float m = vector.y;
@@ -311,6 +321,20 @@ namespace Enhanced_ADS
 			return new Vector2(
 				Screen.height * vector.x * denom / d / tan_half_fov * .5f,
 				Screen.height * (w - .5f)
+			);
+		}
+		static Vector2 fov_correct(Vector2 aim_pos, Vector2 center, float prev_fov)
+			=> center + world_offset_to_screen(screen_offset_to_world(aim_pos - center, prev_fov));
+		static (float ex, float ey_up, float ey_dn, float max_x, float max_y_up, float max_y_dn) camera_bounds(float aim_range, Vector2 center, float edge_offset)
+		{
+			float ex = screen_offset_to_world(new Vector2(center.x - edge_offset, 0)).x;
+			float ey_up = screen_offset_to_world(new Vector2(0, center.y - edge_offset)).y;
+			float ey_dn = Mathf.Abs(screen_offset_to_world(new Vector2(0, -(center.y - edge_offset))).y);
+			return (
+				ex, ey_up, ey_dn,
+				screen_offset_to_world(new Vector2(center.x, 0)).x * (aim_range - ex) / ex,
+				screen_offset_to_world(new Vector2(0, center.y)).y * (aim_range - ey_up) / ey_up,
+				Mathf.Abs(screen_offset_to_world(new Vector2(0, -center.y)).y) * (aim_range - ey_dn) / ey_dn
 			);
 		}
 	}
@@ -334,14 +358,81 @@ namespace Enhanced_ADS
 	}
 	public class ModBehaviour : Duckov.Modding.ModBehaviour
 	{
+		static readonly FieldInfo I_label = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "label");
+		static readonly FieldInfo I_provider = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "provider");
+		static string label_text
+		{
+			get
+			{
+				switch (LocalizationManager.CurrentLanguage)
+				{
+					case SystemLanguage.ChineseSimplified: return "ADS 摄像机模式";
+					case SystemLanguage.ChineseTraditional: return "ADS 攝影機模式";
+					case SystemLanguage.French: return "Mode caméra ADS";
+					case SystemLanguage.German: return "ADS-Kameramodus";
+					case SystemLanguage.Japanese: return "ADSカメラモード";
+					case SystemLanguage.Korean: return "ADS 카메라 모드";
+					case SystemLanguage.Portuguese: return "Modo de câmera ADS";
+					case SystemLanguage.Russian: return "Режим камеры ADS";
+					case SystemLanguage.Spanish: return "Modo de cámara ADS";
+					default: return "ADS Camera Mode";
+				}
+			}
+		}
 		Harmony harmony = new Harmony("Enhanced_ADS.Harmony");
+		TextMeshProUGUI? ads_mode_label;
 		void Awake()
 		{
 			harmony.PatchAll(Assembly.GetExecutingAssembly());
+			CustomOptionsPanel.OnPanelEnabled += OnOptionsPanel;
+			LocalizationManager.OnSetLanguage += OnSetLanguage;
 		}
 		void OnDestroy()
 		{
 			harmony.UnpatchAll(harmony.Id);
+			CustomOptionsPanel.OnPanelEnabled -= OnOptionsPanel;
+			LocalizationManager.OnSetLanguage -= OnSetLanguage;
+		}
+		void OnSetLanguage(SystemLanguage _)
+		{
+			if (ads_mode_label != null)
+			{
+				StartCoroutine(UpdateLabelNextFrame());
+			}
+		}
+		System.Collections.IEnumerator UpdateLabelNextFrame()
+		{
+			yield return null;
+			if (ads_mode_label != null)
+				ads_mode_label.text = label_text;
+		}
+		void OnOptionsPanel(RectTransform panel_transform)
+		{
+			OptionsUIEntry_Dropdown? template_entry = null;
+			Transform search_root = panel_transform;
+			while (search_root.parent != null && template_entry == null)
+			{
+				search_root = search_root.parent;
+				foreach (OptionsUIEntry_Dropdown e in search_root.GetComponentsInChildren<OptionsUIEntry_Dropdown>(true))
+				{
+					if (e.gameObject.name == "UI_HurtVisual") { template_entry = e; break; }
+				}
+			}
+			if (template_entry == null) return;
+			Transform parent = template_entry.transform.parent;
+			Transform existing = parent.Find("Enhanced_ADS.ads_mode_type");
+			if (existing != null)
+			{
+				ads_mode_label = (TextMeshProUGUI)I_label.GetValue(existing.GetComponent<OptionsUIEntry_Dropdown>());
+				return;
+			}
+			GameObject ads_mode_option = Object.Instantiate(template_entry.gameObject, parent);
+			ads_mode_option.name = "Enhanced_ADS.ads_mode_type";
+			ads_mode_option.SetActive(true);
+			OptionsUIEntry_Dropdown entry = ads_mode_option.GetComponent<OptionsUIEntry_Dropdown>();
+			I_provider.SetValue(entry, ads_mode_option.AddComponent<OptionsProvider_ads_mode_type>());
+			ads_mode_label = (TextMeshProUGUI)I_label.GetValue(entry);
+			ads_mode_label.text = label_text;
 		}
 	}
 	public class OptionsProvider_ads_mode_type : OptionsProviderBase
@@ -358,85 +449,26 @@ namespace Enhanced_ADS
 			{
 				switch (LocalizationManager.CurrentLanguage)
 				{
-					case SystemLanguage.ChineseSimplified:// 简体中文
-						return new[]
-						{
-							"自适应灵敏度",
-							"瞄准点为中心",
-							"可滚动"
-						};
-
-					case SystemLanguage.ChineseTraditional:// 繁體中文
-						return new[]
-						{
-							"自適應靈敏度",
-							"以瞄準點為中心",
-							"可滾動"
-						};
-
-					case SystemLanguage.English: default:// English
-						return new[]
-						{
-							"Adaptive Sensitivity",
-							"Center of Aim Point",
-							"Scrollable"
-						};
-
-					case SystemLanguage.French:// Français
-						return new[]
-						{
-							"Sensibilité adaptative",
-							"Centré sur le point visé",
-							"Déroulable"
-						};
-
-					case SystemLanguage.German:// Deutsch
-						return new[]
-						{
-							"Adaptive Empfindlichkeit",
-							"Zielpunkt zentriert",
-							"Scrollbar"
-						};
-
-					case SystemLanguage.Japanese:// 日本語
-						return new[]
-						{
-							"適応感度",
-							"照準点中心",
-							"スクロール可能"
-						};
-
-					case SystemLanguage.Korean:// 한국어
-						return new[]
-						{
-							"적응형 감도",
-							"조준점 중심",
-							"스크롤 가능"
-						};
-
-					case SystemLanguage.Portuguese:// Português (Brasil)
-						return new[]
-						{
-							"Sensibilidade adaptativa",
-							"Centralizar no ponto de mira",
-							"Rolável"
-						};
-
-					case SystemLanguage.Russian:// Русский
-						return new[]
-						{
-							"Адаптивная чувствительность",
-							"Центрировать по точке прицеливания",
-							"Прокручиваемый"
-						};
-
-					case SystemLanguage.Spanish:// Español
-						return new[]
-						{
-							"Sensibilidad adaptativa",
-							"Centrado en el punto de mira",
-							"Desplazable"
-						};
+					case SystemLanguage.ChineseSimplified:
+						return new string[] { "自适应灵敏度", "瞄准点为中心", "可滚动" };
+					case SystemLanguage.ChineseTraditional:
+						return new string[] { "自適應靈敏度", "以瞄準點為中心", "可滾動" };
+					case SystemLanguage.English: default:
+						return new string[] { "Adaptive Sensitivity", "Center of Aim Point", "Scrollable" };
+					case SystemLanguage.French:
+						return new string[] { "Sensibilité adaptative", "Centré sur le point visé", "Déroulable" };
+					case SystemLanguage.German:
+						return new string[] { "Adaptive Empfindlichkeit", "Zielpunkt zentriert", "Scrollbar" };
+					case SystemLanguage.Japanese:
+						return new string[] { "適応感度", "照準点中心", "スクロール可能" };
+					case SystemLanguage.Korean:
+						return new string[] { "적응형 감도", "조준점 중심", "스크롤 가능" };
+					case SystemLanguage.Portuguese:
+						return new string[] { "Sensibilidade adaptativa", "Centralizar no ponto de mira", "Rolável" };
+					case SystemLanguage.Russian:
+						return new string[] { "Адаптивная чувствительность", "Центрировать по точке прицеливания", "Прокручиваемый" };
+					case SystemLanguage.Spanish:
+						return new string[] { "Sensibilidad adaptativa", "Centrado en el punto de mira", "Desplazable" };
 				}
 			}
 		}
@@ -454,128 +486,27 @@ namespace Enhanced_ADS
 			State.ads_mode_type = (Options)index;
 		}
 	}
-	[HarmonyPatch(typeof(OptionsUIEntry_Dropdown), "OnSetLanguage")]
-	internal class OptionsUIEntry_Dropdown__OnSetLanguage
-	{
-		static FieldInfo I_label = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "label");
-		static FieldInfo I_provider = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "provider");
-		static void Postfix(OptionsUIEntry_Dropdown __instance, SystemLanguage language)
-		{
-			if (__instance.gameObject.name != "Enhanced_ADS.ads_mode_type")
-			{
-				return;
-			}
-			I_provider.SetValue(__instance, I_provider.GetValue(__instance));
-			string label_text;
-			switch (language)
-			{
-				case SystemLanguage.ChineseSimplified:// 简体中文
-					label_text = "ADS 摄像机模式";
-					break;
-				case SystemLanguage.ChineseTraditional:// 繁體中文
-					label_text = "ADS 攝影機模式";
-					break;
-				case SystemLanguage.English: default:// English
-					label_text = "ADS Camera Mode";
-					break;
-				case SystemLanguage.French:// Français
-					label_text = "Mode caméra ADS";
-					break;
-				case SystemLanguage.German:// Deutsch
-					label_text = "ADS-Kameramodus";
-					break;
-				case SystemLanguage.Japanese:// 日本語
-					label_text = "ADSカメラモード";
-					break;
-				case SystemLanguage.Korean:// 한국어
-					label_text = "ADS 카메라 모드";
-					break;
-				case SystemLanguage.Portuguese:// Português (Brasil)
-					label_text = "Modo de câmera ADS";
-					break;
-				case SystemLanguage.Russian:// Русский
-					label_text = "Режим камеры ADS";
-					break;
-				case SystemLanguage.Spanish:// Español
-					label_text = "Modo de cámara ADS";
-					break;
-			}
-			((TextMeshProUGUI)I_label.GetValue(__instance)).text = label_text;
-		}
-	}
-	[HarmonyPatch(typeof(OptionsUIEntry_Dropdown), "Start")]
-	internal class OptionsUIEntry_Dropdown__Start
-	{
-		static FieldInfo I_label = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "label");
-		static FieldInfo I_provider = AccessTools.Field(typeof(OptionsUIEntry_Dropdown), "provider");
-		static void Postfix(OptionsUIEntry_Dropdown __instance)
-		{
-			if (__instance.gameObject.name != "UI_HurtVisual")
-			{
-				return;
-			}
-			GameObject template = __instance.gameObject;
-			Transform parent = template.transform.parent;
-			GameObject ads_mode_option = Object.Instantiate(template, parent);
-			ads_mode_option.name = "Enhanced_ADS.ads_mode_type";
-			ads_mode_option.SetActive(true);
-			OptionsUIEntry_Dropdown entry = ads_mode_option.GetComponent<OptionsUIEntry_Dropdown>();
-			I_provider.SetValue(entry, ads_mode_option.AddComponent<OptionsProvider_ads_mode_type>());
-			string label_text;
-			switch (LocalizationManager.CurrentLanguage)
-			{
-				case SystemLanguage.ChineseSimplified:// 简体中文
-					label_text = "ADS 摄像机模式";
-					break;
-				case SystemLanguage.ChineseTraditional:// 繁體中文
-					label_text = "ADS 攝影機模式";
-					break;
-				case SystemLanguage.English: default:// English
-					label_text = "ADS Camera Mode";
-					break;
-				case SystemLanguage.French:// Français
-					label_text = "Mode caméra ADS";
-					break;
-				case SystemLanguage.German:// Deutsch
-					label_text = "ADS-Kameramodus";
-					break;
-				case SystemLanguage.Japanese:// 日本語
-					label_text = "ADSカメラモード";
-					break;
-				case SystemLanguage.Korean:// 한국어
-					label_text = "ADS 카메라 모드";
-					break;
-				case SystemLanguage.Portuguese:// Português (Brasil)
-					label_text = "Modo de câmera ADS";
-					break;
-				case SystemLanguage.Russian:// Русский
-					label_text = "Режим камеры ADS";
-					break;
-				case SystemLanguage.Spanish:// Español
-					label_text = "Modo de cámara ADS";
-					break;
-			}
-			((TextMeshProUGUI)I_label.GetValue(entry)).text = label_text;
-		}
-	}
 	public class State
 	{
 		static FieldInfo I_OnOptionsChanged = AccessTools.Field(typeof(OptionsManager), "OnOptionsChanged");
-		static ES3Settings es3_settings;
 		public static OptionsProvider_ads_mode_type.Options ads_mode_type
 		{
 			get => load_option("Enhanced_ADS.ads_mode_type", OptionsProvider_ads_mode_type.Options.Adaptive_Sensitivity);
 			set => save_option("Enhanced_ADS.ads_mode_type", value);
 		}
+		public static Vector2 ads_world_aim = Vector2.zero;
 		public static Vector2 camera_offset = Vector2.zero;
 		public static float delta = 0f;
-		public static TextMeshProUGUI out_of_range;
-		public static bool tracking = false;
+		static ES3Settings es3_settings;
+		public static TextMeshProUGUI? out_of_range;
+		public static float prev_fov = 0f;
 		static State()
 		{
-			es3_settings = new ES3Settings(true);
-			es3_settings.path = Path.Combine(SavesSystem.SavesFolder, "Mod.ES3");
-			es3_settings.location = ES3.Location.File;
+			es3_settings = new ES3Settings(true)
+			{
+				path = Path.Combine(SavesSystem.SavesFolder, "Mod.ES3"),
+				location = ES3.Location.File
+			};
 		}
 		static T load_option<T>(string key, T default_value)
 		{

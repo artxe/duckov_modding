@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(ilspycmd \"E:/Steam/steamapps/common/Escape from Duckov/Duckov_Data/Managed/*.dll\" *)",
+      "Read(//e/Steam/steamapps/common/Escape from Duckov/**)"
+    ]
+  }
+}

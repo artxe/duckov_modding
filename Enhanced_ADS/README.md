@@ -4,6 +4,14 @@ Sets the sensitivity in ADS mode to be the same as hipfire.
 https://github.com/artxe/duckov_modding
 
 
+> r14: v2.2.0
+> - Rewrote Adaptive Sensitivity and Trace Aim Point camera calculations using world-space math for improved accuracy.
+> - Added FOV correction so the aim point no longer drifts when the camera FOV changes.
+> - Camera bounds now handle upward and downward directions separately for correct asymmetric panning.
+> - Fixed an issue where the ADS Camera Mode option would duplicate in the settings panel when reopened.
+> - Aim range now accounts for the distance between the character and the gun muzzle.
+> - Close-range distance display no longer shows a negative value when aiming behind the character.
+
 > r13: v1.2.5
 > - Fixed an issue where the option settings would reset upon restarting the game.
 > - An Adaptive Sensitivity option has been added, which behaves similarly to the vanilla system but offers better visibility and more consistent sensitivity.
