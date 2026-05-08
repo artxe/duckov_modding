@@ -1,8 +1,14 @@
 # Enhanced ADS
-Sets the sensitivity in ADS mode to be the same as hipfire.
+Adds multiple ADS camera modes with smooth world-space aiming, stable sensitivity, scope FOV correction, aim distance display, and auto-reload on empty.
 
 https://github.com/artxe/duckov_modding
 
+
+> r15: v2.2.0
+> - Fixed camera snapping/jumping that could occur when exiting ADS.
+> - Fixed invalid cursor movement near extreme camera angles and FOV limits.
+> - Improved consistency of aim positioning while zoom levels/FOV change.
+> - Improved vertical camera movement limits for Adaptive Sensitivity and Scrollable modes at steep viewing angles.
 
 > r14: v2.2.0
 > - Rewrote Adaptive Sensitivity and Trace Aim Point camera calculations using world-space math for improved accuracy.
