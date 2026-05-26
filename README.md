@@ -22,3 +22,12 @@ Upon death, your items are restored to their state before you went out.
 Sets the sensitivity in ADS mode to be the same as hipfire.
 
 ![image](./Enhanced_ADS/preview.png)
+
+
+
+## [Super Black Market](./Super_Black_Market/)
+[Steam Workshop (tested on Duckov v2.2.0)](https://steamcommunity.com/sharedfiles/itemedittext/?id=3733212359)
+
+Displays localized, priced item entries grouped by tag order through black market demand and supply lists, with unlimited trades and unlimited manual refreshes.
+
+![image](./Super_Black_Market/preview.png)
