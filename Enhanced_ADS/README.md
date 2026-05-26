@@ -4,6 +4,13 @@ Adds multiple ADS camera modes with smooth world-space aiming, stable sensitivit
 https://github.com/artxe/duckov_modding
 
 
+> r16: v2.2.0
+> - Added a "Default" option to the ADS Camera Mode setting to revert to vanilla behavior without disabling the mod.
+> - ADS camera panning speed now matches the gun's ADS speed instead of a fixed rate.
+> - Aiming down sights now extends the gun's half-damage distance by 5m per point of Aiming Range, granting a range advantage for using ADS.
+> - Aim distance display now shows the gun's maximum bullet distance as the reference value instead of the half-damage distance.
+> - Aim distance display now remains visible while using the Default ADS Camera Mode.
+
 > r15: v2.2.0
 > - Fixed camera snapping/jumping that could occur when exiting ADS.
 > - Fixed invalid cursor movement near extreme camera angles and FOV limits.
