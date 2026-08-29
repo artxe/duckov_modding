@@ -15,6 +15,18 @@ namespace Death_Rewind
 			return true;
 		}
 	}
+	[HarmonyPatch(typeof(PetProxy), "OnCollectSaveData")]
+	internal class PetProxy__OnCollectSaveData
+	{
+		static bool Prefix()
+		{
+			if (LevelManager.Instance.IsRaidMap && CharacterMainControl.Main.Health.IsDead)
+			{
+				return false;
+			}
+			return true;
+		}
+	}
 	[HarmonyPatch(typeof(LevelManager), "SaveMainCharacter")]
 	internal class LevelManager__SaveMainCharacter
 	{

@@ -8,7 +8,7 @@ Shows how many times higher the black market item price is compared to its origi
 
 
 ## [Death Rewind](./Death_Rewind/) 
-[Steam Workshop (tested on Duckov v1.2.5)](https://steamcommunity.com/sharedfiles/filedetails/?id=3615819913)
+[Steam Workshop (updated for Duckov v2.3.30)](https://steamcommunity.com/sharedfiles/filedetails/?id=3615819913)
 
 Upon death, your items are restored to their state before you went out.
 
