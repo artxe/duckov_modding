@@ -25,6 +25,10 @@ Follow the local Duckov modding convention.
 ### ProcessMousePosViaRecoil
 Applies recoil offset to `prev_aim_pos` — does **not** add `mouseDelta`. `mouseDelta` is added separately per mode.
 
+### Auto reload
+
+`ItemAgent_Gun__TransToEmpty` only replaces the game's transition while `State.auto_reload` is enabled. When disabled, its prefix must return `true` so the vanilla empty-magazine behavior runs unchanged. Keep the persisted setting enabled by default for backward compatibility.
+
 ### Adaptive_Sensitivity camera_offset
 `camera_offset` is **linear** in `(aim_pos - center)`:
 

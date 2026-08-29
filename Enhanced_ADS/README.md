@@ -1,8 +1,11 @@
 # Enhanced ADS
-Adds multiple ADS camera modes with smooth world-space aiming, stable sensitivity, scope FOV correction, aim distance display, and auto-reload on empty.
+Adds multiple ADS camera modes with smooth world-space aiming, stable sensitivity, scope FOV correction, aim distance display, and optional auto-reload on empty.
 
 https://github.com/artxe/duckov_modding
 
+
+> r17: v2.3.30
+> - Added a persistent Auto Reload setting. Set it to Disabled in the game options to stop Enhanced ADS from forcing a reload and restore the vanilla empty-magazine behavior.
 
 > r16: v2.2.0
 > - Added a "Default" option to the ADS Camera Mode setting to revert to vanilla behavior without disabling the mod.

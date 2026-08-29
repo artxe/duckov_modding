@@ -378,6 +378,10 @@ namespace Enhanced_ADS
 		static FieldInfo I_gunState = AccessTools.Field(typeof(ItemAgent_Gun), "gunState");
 		static bool Prefix(ItemAgent_Gun __instance)
 		{
+			if (!State.auto_reload)
+			{
+				return true;
+			}
 			if (__instance.GunState == ItemAgent_Gun.GunStates.fire)
 			{
 				I_gunState.SetValue(__instance, ItemAgent_Gun.GunStates.empty);
@@ -413,8 +417,28 @@ namespace Enhanced_ADS
 				}
 			}
 		}
+		static string auto_reload_label_text
+		{
+			get
+			{
+				switch (LocalizationManager.CurrentLanguage)
+				{
+					case SystemLanguage.ChineseSimplified: return "自动装填";
+					case SystemLanguage.ChineseTraditional: return "自動裝填";
+					case SystemLanguage.French: return "Rechargement automatique";
+					case SystemLanguage.German: return "Automatisches Nachladen";
+					case SystemLanguage.Japanese: return "自動リロード";
+					case SystemLanguage.Korean: return "자동 재장전";
+					case SystemLanguage.Portuguese: return "Recarga automática";
+					case SystemLanguage.Russian: return "Автоматическая перезарядка";
+					case SystemLanguage.Spanish: return "Recarga automática";
+					default: return "Auto Reload";
+				}
+			}
+		}
 		Harmony harmony = new Harmony("Enhanced_ADS.Harmony");
 		TextMeshProUGUI? ads_mode_label;
+		TextMeshProUGUI? auto_reload_label;
 		void Awake()
 		{
 			harmony.PatchAll(Assembly.GetExecutingAssembly());
@@ -429,7 +453,7 @@ namespace Enhanced_ADS
 		}
 		void OnSetLanguage(SystemLanguage _)
 		{
-			if (ads_mode_label != null)
+			if (ads_mode_label != null || auto_reload_label != null)
 			{
 				StartCoroutine(UpdateLabelNextFrame());
 			}
@@ -439,6 +463,8 @@ namespace Enhanced_ADS
 			yield return null;
 			if (ads_mode_label != null)
 				ads_mode_label.text = label_text;
+			if (auto_reload_label != null)
+				auto_reload_label.text = auto_reload_label_text;
 		}
 		void OnOptionsPanel(RectTransform panel_transform)
 		{
@@ -454,19 +480,36 @@ namespace Enhanced_ADS
 			}
 			if (template_entry == null) return;
 			Transform parent = template_entry.transform.parent;
-			Transform existing = parent.Find("Enhanced_ADS.ads_mode_type");
-			if (existing != null)
+			Transform existing_ads_mode = parent.Find("Enhanced_ADS.ads_mode_type");
+			if (existing_ads_mode != null)
 			{
-				ads_mode_label = (TextMeshProUGUI)I_label.GetValue(existing.GetComponent<OptionsUIEntry_Dropdown>());
+				ads_mode_label = (TextMeshProUGUI)I_label.GetValue(existing_ads_mode.GetComponent<OptionsUIEntry_Dropdown>());
+			}
+			else
+			{
+				GameObject ads_mode_option = Object.Instantiate(template_entry.gameObject, parent);
+				ads_mode_option.name = "Enhanced_ADS.ads_mode_type";
+				ads_mode_option.SetActive(true);
+				OptionsUIEntry_Dropdown entry = ads_mode_option.GetComponent<OptionsUIEntry_Dropdown>();
+				I_provider.SetValue(entry, ads_mode_option.AddComponent<OptionsProvider_ads_mode_type>());
+				ads_mode_label = (TextMeshProUGUI)I_label.GetValue(entry);
+				ads_mode_label.text = label_text;
+				existing_ads_mode = ads_mode_option.transform;
+			}
+			Transform existing_auto_reload = parent.Find("Enhanced_ADS.auto_reload");
+			if (existing_auto_reload != null)
+			{
+				auto_reload_label = (TextMeshProUGUI)I_label.GetValue(existing_auto_reload.GetComponent<OptionsUIEntry_Dropdown>());
 				return;
 			}
-			GameObject ads_mode_option = Object.Instantiate(template_entry.gameObject, parent);
-			ads_mode_option.name = "Enhanced_ADS.ads_mode_type";
-			ads_mode_option.SetActive(true);
-			OptionsUIEntry_Dropdown entry = ads_mode_option.GetComponent<OptionsUIEntry_Dropdown>();
-			I_provider.SetValue(entry, ads_mode_option.AddComponent<OptionsProvider_ads_mode_type>());
-			ads_mode_label = (TextMeshProUGUI)I_label.GetValue(entry);
-			ads_mode_label.text = label_text;
+			GameObject auto_reload_option = Object.Instantiate(template_entry.gameObject, parent);
+			auto_reload_option.name = "Enhanced_ADS.auto_reload";
+			auto_reload_option.transform.SetSiblingIndex(existing_ads_mode.GetSiblingIndex() + 1);
+			auto_reload_option.SetActive(true);
+			OptionsUIEntry_Dropdown auto_reload_entry = auto_reload_option.GetComponent<OptionsUIEntry_Dropdown>();
+			I_provider.SetValue(auto_reload_entry, auto_reload_option.AddComponent<OptionsProvider_auto_reload>());
+			auto_reload_label = (TextMeshProUGUI)I_label.GetValue(auto_reload_entry);
+			auto_reload_label.text = auto_reload_label_text;
 		}
 	}
 	public class OptionsProvider_ads_mode_type : OptionsProviderBase
@@ -521,6 +564,51 @@ namespace Enhanced_ADS
 			State.ads_mode_type = (Options)index;
 		}
 	}
+	public class OptionsProvider_auto_reload : OptionsProviderBase
+	{
+		static string[] options
+		{
+			get
+			{
+				switch (LocalizationManager.CurrentLanguage)
+				{
+					case SystemLanguage.ChineseSimplified:
+						return new string[] { "开启", "关闭" };
+					case SystemLanguage.ChineseTraditional:
+						return new string[] { "開啟", "關閉" };
+					case SystemLanguage.English: default:
+						return new string[] { "Enabled", "Disabled" };
+					case SystemLanguage.French:
+						return new string[] { "Activé", "Désactivé" };
+					case SystemLanguage.German:
+						return new string[] { "Ein", "Aus" };
+					case SystemLanguage.Japanese:
+						return new string[] { "オン", "オフ" };
+					case SystemLanguage.Korean:
+						return new string[] { "켜기", "끄기" };
+					case SystemLanguage.Portuguese:
+						return new string[] { "Ativado", "Desativado" };
+					case SystemLanguage.Russian:
+						return new string[] { "Вкл.", "Выкл." };
+					case SystemLanguage.Spanish:
+						return new string[] { "Activada", "Desactivada" };
+				}
+			}
+		}
+		public override string Key => "Enhanced_ADS.auto_reload";
+		public override string[] GetOptions()
+		{
+			return options;
+		}
+		public override string GetCurrentOption()
+		{
+			return options[State.auto_reload ? 0 : 1];
+		}
+		public override void Set(int index)
+		{
+			State.auto_reload = index == 0;
+		}
+	}
 	[HarmonyPatch(typeof(Projectile), nameof(Projectile.Init), new System.Type[] { typeof(ProjectileContext) })]
 	internal class Projectile__Init
 	{
@@ -553,6 +641,11 @@ namespace Enhanced_ADS
 		{
 			get => load_option("Enhanced_ADS.ads_mode_type", OptionsProvider_ads_mode_type.Options.Adaptive_Sensitivity);
 			set => save_option("Enhanced_ADS.ads_mode_type", value);
+		}
+		public static bool auto_reload
+		{
+			get => load_option("Enhanced_ADS.auto_reload", true);
+			set => save_option("Enhanced_ADS.auto_reload", value);
 		}
 		public static Vector2 camera_offset = Vector2.zero;
 		public static float delta = 0f;
