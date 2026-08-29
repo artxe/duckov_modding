@@ -26,6 +26,8 @@ Follow the local Duckov modding convention.
 
 The mod fully replaces `BlackMarket.GenerateDemandsAndSupplies`. Preserve the original post-generation side effects: invoke `onAfterGenerateEntries`, save the main character, collect save data, and write the save file when the level is initialized.
 
+Search generations are transient: keep `onAfterGenerateEntries`, but do not save filtered demand/supply lists. While a query is active, `BlackMarket.Save` must be suppressed. Clearing the query, closing the view, or unloading the mod must regenerate and persist the full catalog before removing search state.
+
 ### Item order
 
 `selected_page` is shared between demand and supply tabs — both reset their cursor to `get_page_start(selected_page, ...)` every generation. `next_demand_index`/`next_supply_index` are only fallback state and get overwritten by the page logic.

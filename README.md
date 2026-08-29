@@ -26,8 +26,8 @@ Adds configurable ADS camera behavior, stable sensitivity, aim-distance feedback
 
 
 ## [Super Black Market](./Super_Black_Market/)
-[Steam Workshop (tested on Duckov v2.2.0)](https://steamcommunity.com/sharedfiles/itemedittext/?id=3733212359)
+[Steam Workshop (updated for Duckov v2.3.30)](https://steamcommunity.com/sharedfiles/itemedittext/?id=3733212359)
 
-Displays localized, priced item entries grouped by tag order through black market demand and supply lists, with unlimited trades and unlimited manual refreshes.
+Displays a searchable, localized item catalog grouped by tag order through black market demand and supply lists, with unlimited trades and inventory-first purchases.
 
 ![image](./Super_Black_Market/preview.png)
