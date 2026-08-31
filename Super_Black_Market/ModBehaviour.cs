@@ -478,6 +478,7 @@ namespace Super_Black_Market
 		static void Postfix(BlackMarketView __instance)
 		{
 			BlackMarketPageController.close(__instance);
+			BlackMarketPageController.release(__instance);
 		}
 	}
 	[HarmonyPatch(typeof(DemandPanel_Entry), "Refresh")]
@@ -619,8 +620,14 @@ namespace Super_Black_Market
 		internal static void refresh(BlackMarketView view)
 		{
 			BlackMarket target = view.Target;
+			if (target == null
+				|| !market_by_view.TryGetValue(view, out BlackMarket installed_target)
+				|| installed_target != target)
+			{
+				return;
+			}
 			Button template = (Button)I_btn_refresh.GetValue(view);
-			if (target == null || template == null)
+			if (template == null)
 			{
 				return;
 			}
@@ -688,6 +695,11 @@ namespace Super_Black_Market
 			destroy_control_container(view);
 			if (!refresh_chrome_state_by_view.TryGetValue(view, out RefreshChromeState state))
 			{
+				Canvas.ForceUpdateCanvases();
+				if (refresh_button.transform.parent is RectTransform parent_rect)
+				{
+					LayoutRebuilder.ForceRebuildLayoutImmediate(parent_rect);
+				}
 				state = capture_refresh_chrome_state(view, refresh_button);
 				refresh_chrome_state_by_view[view] = state;
 			}
@@ -719,13 +731,16 @@ namespace Super_Black_Market
 			}
 			return state;
 		}
-		static void restore_refresh_chrome(BlackMarketView view)
+		static void restore_refresh_chrome(BlackMarketView view, bool forget_state)
 		{
 			if (refresh_chrome_state_by_view.TryGetValue(view, out RefreshChromeState state))
 			{
 				state.restore();
 			}
-			refresh_chrome_state_by_view.Remove(view);
+			if (forget_state)
+			{
+				refresh_chrome_state_by_view.Remove(view);
+			}
 		}
 		static PagesControl_Entry? find_pages_template()
 		{
@@ -791,7 +806,7 @@ namespace Super_Black_Market
 			{
 				copy_rect_transform(refresh_rect, controls_rect);
 			}
-			float initial_width = get_available_left_width(parent);
+			float initial_width = get_available_left_width(view, parent);
 			controls_rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, initial_width);
 			controls_rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, search_input_height);
 			set_layout_size(controls.GetComponent<LayoutElement>(), initial_width, search_input_height);
@@ -1112,7 +1127,7 @@ namespace Super_Black_Market
 			float visible_button_height = (grid.cellSize.y * visible_rows) + (base_spacing_y * Mathf.Max(0, visible_rows - 1));
 			float gap = Mathf.Max(minimum_gap, (catalog_height - search_input_height - visible_button_height) / 3f);
 			grid.spacing = new Vector2(grid.spacing.x, base_spacing_y);
-			float available_width = get_available_left_width(sizing_parent);
+			float available_width = get_available_left_width(view, sizing_parent);
 			int columns = calculate_columns(grid, available_width);
 			grid.constraintCount = columns;
 			int rows = Mathf.Max(1, Mathf.CeilToInt((float)Mathf.Max(1, page_count) / columns));
@@ -1414,6 +1429,15 @@ namespace Super_Black_Market
 			}
 			return 4f * 40f;
 		}
+		static float get_available_left_width(BlackMarketView view, Transform parent)
+		{
+			if (refresh_chrome_state_by_view.TryGetValue(view, out RefreshChromeState state)
+				&& state.try_get_original_width(parent, out float original_width))
+			{
+				return original_width;
+			}
+			return get_available_left_width(parent);
+		}
 		static int calculate_columns(GridLayoutGroup grid, float available_width)
 		{
 			float usable_width = Mathf.Max(grid.cellSize.x, available_width - grid.padding.left - grid.padding.right);
@@ -1516,10 +1540,10 @@ namespace Super_Black_Market
 				closing_views.Remove(view);
 			}
 		}
-		internal static void release(BlackMarketView view)
+		internal static void release(BlackMarketView view, bool forget_chrome_state = false)
 		{
 			destroy_control_container(view);
-			restore_refresh_chrome(view);
+			restore_refresh_chrome(view, forget_chrome_state);
 			scroll_position_by_view.Remove(view);
 			reset_scroll_on_next_refresh.Remove(view);
 			if (market_by_view.TryGetValue(view, out BlackMarket market))
@@ -1557,7 +1581,7 @@ namespace Super_Black_Market
 			}
 			foreach (BlackMarketView view in views)
 			{
-				release(view);
+				release(view, forget_chrome_state: true);
 			}
 			control_container_by_view.Clear();
 			page_container_by_view.Clear();
@@ -1623,6 +1647,8 @@ namespace Super_Black_Market
 		{
 			readonly Button refresh_button;
 			readonly bool refresh_button_active;
+			readonly Transform? controls_parent;
+			readonly float controls_parent_width;
 			readonly Dictionary<GameObject, HiddenObjectState> hidden_objects = new Dictionary<GameObject, HiddenObjectState>();
 			Image? background;
 			bool background_enabled;
@@ -1631,6 +1657,15 @@ namespace Super_Black_Market
 			{
 				this.refresh_button = refresh_button;
 				refresh_button_active = refresh_button.gameObject.activeSelf;
+				controls_parent = refresh_button.transform.parent;
+				controls_parent_width = controls_parent != null
+					? get_available_left_width(controls_parent)
+					: 0f;
+			}
+			internal bool try_get_original_width(Transform parent, out float width)
+			{
+				width = controls_parent_width;
+				return parent == controls_parent && width > 0f;
 			}
 			internal void add_hidden_object(GameObject? game_object)
 			{
@@ -2009,7 +2044,7 @@ namespace Super_Black_Market
 			{
 				if (!ReferenceEquals(view, null))
 				{
-					release(view!);
+					release(view!, forget_chrome_state: true);
 				}
 			}
 		}
