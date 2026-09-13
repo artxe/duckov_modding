@@ -4,6 +4,9 @@ Adds multiple ADS camera modes with smooth world-space aiming, stable sensitivit
 https://github.com/artxe/duckov_modding
 
 
+> r18: v2.3.30
+> - Fixed camera jumping with short-range guns in Adaptive Sensitivity and Scrollable modes.
+
 > r17: v2.3.30
 > - Added a persistent Auto Reload setting. Set it to Disabled in the game options to stop Enhanced ADS from forcing a reload and restore the vanilla empty-magazine behavior.
 

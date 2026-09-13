@@ -118,8 +118,8 @@ namespace Enhanced_ADS
 					if (State.ads_mode_type == OptionsProvider_ads_mode_type.Options.Adaptive_Sensitivity)
 					{
 						var (world_edge_x, world_edge_y_up, world_edge_y_down, max_camera_x, max_camera_y_up, max_camera_y_down) = camera_bounds(aim_range, center, screen_edge_offset);
-						float current_y_ratio = current_world_aim.y > 0 ? (aim_range - world_edge_y_up) : (aim_range - world_edge_y_down);
-						State.camera_offset.x = Mathf.Clamp(State.delta * current_world_aim.x * (aim_range - world_edge_x) / aim_range, -max_camera_x, max_camera_x);
+						float current_y_ratio = Mathf.Max(0f, aim_range - (current_world_aim.y > 0 ? world_edge_y_up : world_edge_y_down));
+						State.camera_offset.x = Mathf.Clamp(State.delta * current_world_aim.x * Mathf.Max(0f, aim_range - world_edge_x) / aim_range, -max_camera_x, max_camera_x);
 						State.camera_offset.y = pitch - 1f > fov * .5f
 							? Mathf.Clamp(State.delta * current_world_aim.y * current_y_ratio / aim_range, -max_camera_y_down, max_camera_y_up)
 							: 0f;
@@ -366,9 +366,9 @@ namespace Enhanced_ADS
 			float ex = screen_offset_to_world(new Vector2(center.x - edge_offset, 0f)).x;
 			float ey_up = screen_offset_to_world(new Vector2(0f, center.y - edge_offset)).y;
 			float ey_dn = Mathf.Abs(screen_offset_to_world(new Vector2(0f, -(center.y - edge_offset))).y);
-			float max_x = screen_offset_to_world(new Vector2(center.x, 0f)).x * (aim_range - ex) / ex;
-			float max_y_up = screen_offset_to_world(new Vector2(0f, center.y)).y * (aim_range - ey_up) / ey_up;
-			float max_y_dn = Mathf.Abs(screen_offset_to_world(new Vector2(0f, -center.y)).y) * (aim_range - ey_dn) / ey_dn;
+			float max_x = screen_offset_to_world(new Vector2(center.x, 0f)).x * Mathf.Max(0f, aim_range - ex) / ex;
+			float max_y_up = screen_offset_to_world(new Vector2(0f, center.y)).y * Mathf.Max(0f, aim_range - ey_up) / ey_up;
+			float max_y_dn = Mathf.Abs(screen_offset_to_world(new Vector2(0f, -center.y)).y) * Mathf.Max(0f, aim_range - ey_dn) / ey_dn;
 			return (ex, ey_up, ey_dn, max_x, max_y_up, max_y_dn);
 		}
 	}
