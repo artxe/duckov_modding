@@ -1,3 +1,6 @@
 **/*.sln
 */bin/
 */obj/
+.scratch/
+local.props
+**/.claude/settings.local.json

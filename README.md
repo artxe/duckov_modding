@@ -1,3 +1,7 @@
+## Building
+
+Builds copy the mod into the game folder. If the game is not in `C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data`, create a git-ignored `local.props` at the repository root: `<Project><PropertyGroup><DuckovPath>...\Duckov_Data</DuckovPath></PropertyGroup></Project>`, or pass `-p:DuckovPath=...\Duckov_Data` to `dotnet build`.
+
 ## [Black Market Price Comparison](./Black_Market_Price_Comparison/) 
 [Steam Workshop (tested on Duckov v1.2.5)](https://steamcommunity.com/sharedfiles/filedetails/?id=3618087266)
 

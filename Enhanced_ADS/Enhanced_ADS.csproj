@@ -2,7 +2,6 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.1</TargetFramework>
 		<Nullable>enable</Nullable>
-		<DuckovPath>E:\Steam\steamapps\common\Escape from Duckov\Duckov_Data</DuckovPath>
 	</PropertyGroup>
 	<ItemGroup>
 		<Reference Include="$(DuckovPath)\Managed\Cinemachine.dll"/>
