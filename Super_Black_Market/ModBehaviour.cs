@@ -639,7 +639,7 @@ namespace Super_Black_Market
 			PagesControl_Entry? pages_template = find_pages_template();
 			if (pages_template == null)
 			{
-				Debug.LogWarning("Super Black Market: 창고 페이지 버튼 템플릿을 찾지 못했습니다.");
+				Debug.LogWarning("Super Black Market: could not find the storage page button template.");
 				return;
 			}
 			bool reset_scroll = reset_scroll_on_next_refresh.Remove(view);
