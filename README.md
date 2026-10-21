@@ -1,3 +1,9 @@
+## Building
+
+Builds copy the mod into the game folder. If the game is not in `C:\Program Files (x86)\Steam\steamapps\common\Escape from Duckov\Duckov_Data`, create a git-ignored `local.props` at the repository root: `<Project><PropertyGroup><DuckovPath>...\Duckov_Data</DuckovPath></PropertyGroup></Project>`, or pass `-p:DuckovPath=...\Duckov_Data` to `dotnet build`.
+
+`0Harmony.dll` is [Harmony](https://github.com/pardeike/Harmony) (MIT); each mod ships it with [0Harmony.LICENSE.txt](./0Harmony.LICENSE.txt).
+
 ## [Black Market Price Comparison](./Black_Market_Price_Comparison/) 
 [Steam Workshop (tested on Duckov v1.2.5)](https://steamcommunity.com/sharedfiles/filedetails/?id=3618087266)
 
